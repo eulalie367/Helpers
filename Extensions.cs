@@ -35,21 +35,25 @@ namespace System
         /// <summary>
         /// Parses a string and returns it's nullable int value
         /// </summary>
-        public static int? ToInt(this string str)
+        public static int? ToInt(this object obj)
         {
             int? retVal = null;
             try
             {
-                int tmp = -1;
-                if (!string.IsNullOrEmpty(str))
-                    if (int.TryParse(str, out tmp))
-                        retVal = tmp;
+                if(obj != null)
+                {
+                    string str = obj.ToString();
+                    int tmp = -1;
+                    if (!string.IsNullOrEmpty(str))
+                        if (int.TryParse(str, out tmp))
+                            retVal = tmp;
+                }
             }
             catch
             { }
             return retVal;
         }
-        public static double ? ToDouble(this string str)
+        public static double? ToDouble(this string str)
         {
             double? retVal = null;
             try
@@ -73,15 +77,19 @@ namespace System
         /// <summary>
         /// Parses a string and returns it's nullable datetime value
         /// </summary>
-        public static DateTime? ToDateTime(this string str)
+        public static DateTime? ToDateTime(this object obj)
         {
             DateTime? retVal = null;
             try
             {
-                DateTime tmp;
-                if (!string.IsNullOrEmpty(str))
-                    if (DateTime.TryParse(str, out tmp))
-                        retVal = tmp;
+                if (obj != null)
+                {
+                    string str = obj.ToString();
+                    DateTime tmp;
+                    if (!string.IsNullOrEmpty(str))
+                        if (DateTime.TryParse(str, out tmp))
+                            retVal = tmp;
+                }
             }
             catch
             { }
@@ -289,6 +297,142 @@ namespace System
         {
             string baseQuery = u.RemoveQuerystringParam(key);
             return string.Format("{0}{1}{2}={3}", baseQuery, (baseQuery == "?" ? "" : "&"), key, value);
+        }
+
+        public static string InnerHTML(this string html, string tagName)
+        {
+            string retVal = "";
+
+            if (!string.IsNullOrEmpty(html))
+            {
+                System.Text.RegularExpressions.Regex r = new Text.RegularExpressions.Regex(string.Format("<{0}.*>([^<]+)", tagName));
+                var matches = r.Match(html);
+                if (matches != null && matches.Groups.Count > 0 && matches.Groups[1] != null)
+                    retVal = matches.Groups[1].Value;
+            }
+
+            return retVal;
+        }
+
+        public static System.Data.DataRow[] GetRows(this System.Data.DataSet ds, int table)
+        {
+            List<System.Data.DataRow> retVal = new List<System.Data.DataRow>();
+
+            if (ds != null && ds.Tables != null && ds.Tables[table] != null)
+                foreach(System.Data.DataRow dr in ds.Tables[table].Rows)
+                    retVal.Add(dr);
+
+            return retVal.ToArray();
+        }
+        public static System.Data.DataRow[] GetDefaultRows(this System.Data.DataSet ds)
+        {
+            return ds.GetRows(0);
+        }
+
+        public static System.Drawing.Bitmap CropWhiteSpace(this System.Drawing.Bitmap bmp)
+        {
+            int w = bmp.Width;
+            int h = bmp.Height;
+
+            Func<int, bool> allWhiteRow = row =>
+            {
+                for (int i = 0; i < w; ++i)
+                    if (bmp.GetPixel(i, row).R != 255)
+                        return false;
+                return true;
+            };
+
+            Func<int, bool> allWhiteColumn = col =>
+            {
+                for (int i = 0; i < h; ++i)
+                    if (bmp.GetPixel(col, i).R != 255)
+                        return false;
+                return true;
+            };
+
+            int topmost = 0;
+            for (int row = 0; row < h; ++row)
+            {
+                if (allWhiteRow(row))
+                    topmost = row;
+                else break;
+            }
+
+            int bottommost = 0;
+            for (int row = h - 1; row >= 0; --row)
+            {
+                if (allWhiteRow(row))
+                    bottommost = row;
+                else break;
+            }
+
+            int leftmost = 0, rightmost = 0;
+            for (int col = 0; col < w; ++col)
+            {
+                if (allWhiteColumn(col))
+                    leftmost = col;
+                else
+                    break;
+            }
+
+            for (int col = w - 1; col >= 0; --col)
+            {
+                if (allWhiteColumn(col))
+                    rightmost = col;
+                else
+                    break;
+            }
+
+            if (rightmost == 0) rightmost = w; // As reached left
+            if (bottommost == 0) bottommost = h; // As reached top.
+
+            int croppedWidth = rightmost - leftmost;
+            int croppedHeight = bottommost - topmost;
+
+            if (croppedWidth == 0) // No border on left or right
+            {
+                leftmost = 0;
+                croppedWidth = w;
+            }
+
+            if (croppedHeight == 0) // No border on top or bottom
+            {
+                topmost = 0;
+                croppedHeight = h;
+            }
+
+            try
+            {
+                var target = new System.Drawing.Bitmap(croppedWidth, croppedHeight);
+                using (System.Drawing.Graphics g = System.Drawing.Graphics.FromImage(target))
+                {
+                    g.DrawImage(bmp,
+                      new System.Drawing.RectangleF(0, 0, croppedWidth, croppedHeight),
+                      new System.Drawing.RectangleF(leftmost, topmost, croppedWidth, croppedHeight),
+                      System.Drawing.GraphicsUnit.Pixel);
+                }
+                return target;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(
+                  string.Format("Values are topmost={0} btm={1} left={2} right={3} croppedWidth={4} croppedHeight={5}", topmost, bottommost, leftmost, rightmost, croppedWidth, croppedHeight),
+                  ex);
+            }
+        }
+
+        public static System.Drawing.Bitmap Crop(this System.Drawing.Bitmap bmp, int width, int? height)
+        {
+            height = height ?? (int)(bmp.Height * ((double)width / (double)bmp.Width));
+
+            System.Drawing.Bitmap retVal = new Drawing.Bitmap(width, height.Value);
+            System.Drawing.Graphics g = System.Drawing.Graphics.FromImage(retVal);
+
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+
+            g.DrawImage(bmp, 0, 0, width, height.Value);
+
+            return retVal;
         }
     }
 }
