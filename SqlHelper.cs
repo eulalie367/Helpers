@@ -7,9 +7,6 @@ using System.Data.SqlClient;
 using System.Configuration;
 using System.Reflection;
 
-using Telerik.Sitefinity.Configuration;
-using Telerik.Sitefinity.Data.Configuration;
-
 namespace System.Data
 {
     public class SqlHelper
@@ -24,7 +21,7 @@ namespace System.Data
             get
             {
                 if (string.IsNullOrEmpty(connString))
-                    connString = Config.Get<DataConfig>().ConnectionStrings["Sitefinity"].ConnectionString;
+                    connString = ConfigurationManager.ConnectionStrings["cci"].ConnectionString;
                 return connString;
             }
         }
