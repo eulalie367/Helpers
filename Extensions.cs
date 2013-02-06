@@ -434,5 +434,14 @@ namespace System
 
             return retVal;
         }
+
+        public static string ToBase64(this string s)
+        {
+            return Convert.ToBase64String(Encoding.Unicode.GetBytes(s));
+        }
+        public static string FromBase64(this string s)
+        {
+            return System.Text.Encoding.Unicode.GetString(Convert.FromBase64String(s));
+        }
     }
 }
