@@ -87,7 +87,13 @@ namespace System.Data
             }
             return FillEntities<t>(dbName, collectionName, q);
         }
-        public static List<t> FillEntities<t>(string dbName, string collectionName, IMongoQuery query)
+        public static List<t> FillEntities<t>(string dbName, string collectionName, string query)
+        {
+            BsonDocument doc = MongoDB.Bson.Serialization.BsonSerializer.Deserialize<BsonDocument>(query);
+            IMongoQuery q = new QueryComplete(doc);
+            return FillEntities<t>(dbName, collectionName, q);
+        }
+        private static List<t> FillEntities<t>(string dbName, string collectionName, IMongoQuery query)
         {
             try
             {

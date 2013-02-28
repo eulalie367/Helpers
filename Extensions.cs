@@ -437,11 +437,11 @@ namespace System
 
         public static string ToBase64(this string s)
         {
-            return Convert.ToBase64String(Encoding.Unicode.GetBytes(s));
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(s));
         }
         public static string FromBase64(this string s)
         {
-            return System.Text.Encoding.Unicode.GetString(Convert.FromBase64String(s));
+            return System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(s));
         }
     }
 }
