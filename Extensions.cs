@@ -443,5 +443,32 @@ namespace System
         {
             return System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(s));
         }
+
+        public static string GetRequestHeader(this Uri address)
+        { 
+            return GetWebRequest(address, "HEAD");
+        }
+        public static string GetWebRequest(this Uri address, string method)
+        {
+            string retVal = "";
+            System.Net.WebRequest request = System.Net.WebRequest.Create(address);
+
+            if (!string.IsNullOrEmpty(method))
+                request.Method = method;
+            
+            using (WebResponse response = request.GetResponse()) 
+            {
+                using (System.IO.Stream s = response.GetResponseStream())
+                { 
+                    using(System.IO.StreamReader sr = new IO.StreamReader(s))
+                    {
+                        retVal = sr.ReadToEnd();
+                    }
+                }
+            }
+
+
+            return retVal;
+        }
     }
 }
