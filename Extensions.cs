@@ -40,7 +40,7 @@ namespace System
             int? retVal = null;
             try
             {
-                if(obj != null)
+                if (obj != null)
                 {
                     string str = obj.ToString();
                     int tmp = -1;
@@ -69,9 +69,9 @@ namespace System
         }
         public static int RoundUp(this double d)
         {
-            int retval = (int) d;
-            if(retval < d)
-               retval++;
+            int retval = (int)d;
+            if (retval < d)
+                retval++;
             return retval;
         }
         /// <summary>
@@ -319,7 +319,7 @@ namespace System
             List<System.Data.DataRow> retVal = new List<System.Data.DataRow>();
 
             if (ds != null && ds.Tables != null && ds.Tables[table] != null)
-                foreach(System.Data.DataRow dr in ds.Tables[table].Rows)
+                foreach (System.Data.DataRow dr in ds.Tables[table].Rows)
                     retVal.Add(dr);
 
             return retVal.ToArray();
@@ -445,7 +445,7 @@ namespace System
         }
 
         public static string GetRequestHeader(this Uri address)
-        { 
+        {
             return GetWebRequest(address, "HEAD");
         }
         public static string GetWebRequest(this Uri address, string method)
@@ -455,12 +455,12 @@ namespace System
 
             if (!string.IsNullOrEmpty(method))
                 request.Method = method;
-            
-            using (WebResponse response = request.GetResponse()) 
+
+            using (WebResponse response = request.GetResponse())
             {
                 using (System.IO.Stream s = response.GetResponseStream())
-                { 
-                    using(System.IO.StreamReader sr = new IO.StreamReader(s))
+                {
+                    using (System.IO.StreamReader sr = new IO.StreamReader(s))
                     {
                         retVal = sr.ReadToEnd();
                     }
@@ -469,6 +469,25 @@ namespace System
 
 
             return retVal;
+        }
+
+        public static Guid GetHashCode128(this string s)
+        {
+            System.Security.Cryptography.MD5 c = System.Security.Cryptography.MD5.Create();
+            byte[] b = c.ComputeHash(Encoding.UTF8.GetBytes(s));
+            int z = System.Net.IPAddress.HostToNetworkOrder(BitConverter.ToInt32(b, 0));
+            short y = System.Net.IPAddress.HostToNetworkOrder(BitConverter.ToInt16(b, 4));
+            short x = System.Net.IPAddress.HostToNetworkOrder(BitConverter.ToInt16(b, 6));
+            Guid g = new Guid(z, y, x, b.Skip(8).ToArray());
+            return g;
+        }
+
+        public static string NormalizeURL(this string s)
+        {
+            s = s.ToLower();
+            System.Text.RegularExpressions.Regex r = new Text.RegularExpressions.Regex("\\s");
+            s = r.Replace(s, "");
+            return s;
         }
     }
 }
