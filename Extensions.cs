@@ -474,6 +474,7 @@ namespace System
         public static Guid GetHashCode128(this string s)
         {
             System.Security.Cryptography.MD5 c = System.Security.Cryptography.MD5.Create();
+            s = s.NormalizeURL();
             byte[] b = c.ComputeHash(Encoding.UTF8.GetBytes(s));
             int z = System.Net.IPAddress.HostToNetworkOrder(BitConverter.ToInt32(b, 0));
             short y = System.Net.IPAddress.HostToNetworkOrder(BitConverter.ToInt16(b, 4));
@@ -489,5 +490,6 @@ namespace System
             s = r.Replace(s, "");
             return s;
         }
+
     }
 }
