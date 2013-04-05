@@ -238,6 +238,7 @@ namespace System.Data
             catch (SqlException e)
             {
                 //TODO:add error handling
+                Logger.Warn(e);
             }
 
 
