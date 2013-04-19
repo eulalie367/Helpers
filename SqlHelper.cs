@@ -53,7 +53,7 @@ namespace System.Data
             }
             catch (SqlException e)
             {
-                //TODO:add error handling
+                Logger.Warn(e);
             }
 
             return retVal;
@@ -71,6 +71,7 @@ namespace System.Data
                 {
                     using (SqlCommand com = new SqlCommand(sql, conn))
                     {
+                        com.CommandTimeout = int.MaxValue;
                         com.CommandType = commandType;
                         if (Params != null && Params.Length > 0)
                             com.Parameters.AddRange(Params);
@@ -85,8 +86,7 @@ namespace System.Data
             }
             catch (SqlException e)
             {
-                //TODO:add error handling
-                throw new Exception(e.Message);
+                Logger.Warn(e);
             }
 
             return retVal;
@@ -164,7 +164,7 @@ namespace System.Data
             }
             catch (SqlException e)
             {
-                //TODO:add error handling
+                Logger.Warn(e);
             }
 
 
@@ -237,8 +237,14 @@ namespace System.Data
             }
             catch (SqlException e)
             {
-                //TODO:add error handling
-                Logger.Warn(e);
+                StringBuilder sb = new StringBuilder(sql);
+                foreach( var p in Params )
+                {
+                    sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
+                }
+
+
+                Logger.Warn(e,sb.ToString());
             }
 
 
