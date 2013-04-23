@@ -25,6 +25,8 @@ namespace System.Data
                 return connString;
             }
         }
+
+        private static readonly object lockExecuteScalar = new object();
         public static object ExecuteScalar(string sql)
         {
             return ExecuteScalar(sql, null, CommandType.Text);
@@ -34,7 +36,7 @@ namespace System.Data
             object retVal = null;
             try
             {
-                lock (ConnString)
+                lock (lockExecuteScalar)
                 {
                     using (SqlConnection conn = new SqlConnection(ConnString))
                     {
@@ -61,6 +63,8 @@ namespace System.Data
 
             return retVal;
         }
+
+        private static readonly object lockExecuteNonQuery = new object();
         public static int ExecuteNonQuery(string sql)
         {
             return ExecuteNonQuery(sql, null, CommandType.Text);
@@ -70,7 +74,7 @@ namespace System.Data
             int retVal = 0;
             try
             {
-                lock (ConnString)
+                lock (lockExecuteNonQuery)
                 {
                     using (SqlConnection conn = new SqlConnection(ConnString))
                     {
@@ -97,6 +101,8 @@ namespace System.Data
 
             return retVal;
         }
+
+        private static readonly object lockFillEntities = new object();
         /// <summary>
         /// This will give all results the correct type
         /// You will need to make sure that the properties in the class you pass are named the same as the dbcolumn
@@ -127,7 +133,7 @@ namespace System.Data
             t tmp = default(t);
             try
             {
-                lock (ConnString)
+                lock (lockFillEntities)
                 {
 
                     using (SqlConnection conn = new SqlConnection(ConnString))
@@ -180,6 +186,8 @@ namespace System.Data
 
             return retVal;
         }
+
+        private static readonly object lockFillEntity = new object();
         /// <summary>
         /// This will give all results the correct type
         /// You will need to make sure that the properties in the class you pass are named the same as the dbcolumn
@@ -209,7 +217,7 @@ namespace System.Data
             t tmp = default(t);
             try
             {
-                lock (ConnString)
+                lock (lockFillEntity)
                 {
                     using (SqlConnection conn = new SqlConnection(ConnString))
                     {
