@@ -34,20 +34,23 @@ namespace System.Data
             object retVal = null;
             try
             {
-                using (SqlConnection conn = new SqlConnection(ConnString))
+                lock (ConnString)
                 {
-                    using (SqlCommand com = new SqlCommand(sql, conn))
+                    using (SqlConnection conn = new SqlConnection(ConnString))
                     {
-                        com.CommandType = commandType;
+                        using (SqlCommand com = new SqlCommand(sql, conn))
+                        {
+                            com.CommandType = commandType;
 
-                        if (Params != null)
-                            com.Parameters.AddRange(Params);
+                            if (Params != null)
+                                com.Parameters.AddRange(Params);
 
-                        conn.Open();
+                            conn.Open();
 
-                        retVal = com.ExecuteScalar();
+                            retVal = com.ExecuteScalar();
 
-                        conn.Close();
+                            conn.Close();
+                        }
                     }
                 }
             }
@@ -67,20 +70,23 @@ namespace System.Data
             int retVal = 0;
             try
             {
-                using (SqlConnection conn = new SqlConnection(ConnString))
+                lock (ConnString)
                 {
-                    using (SqlCommand com = new SqlCommand(sql, conn))
+                    using (SqlConnection conn = new SqlConnection(ConnString))
                     {
-                        com.CommandTimeout = int.MaxValue;
-                        com.CommandType = commandType;
-                        if (Params != null && Params.Length > 0)
-                            com.Parameters.AddRange(Params);
+                        using (SqlCommand com = new SqlCommand(sql, conn))
+                        {
+                            com.CommandTimeout = int.MaxValue;
+                            com.CommandType = commandType;
+                            if (Params != null && Params.Length > 0)
+                                com.Parameters.AddRange(Params);
 
-                        conn.Open();
+                            conn.Open();
 
-                        retVal = com.ExecuteNonQuery();
+                            retVal = com.ExecuteNonQuery();
 
-                        conn.Close();
+                            conn.Close();
+                        }
                     }
                 }
             }
@@ -121,44 +127,48 @@ namespace System.Data
             t tmp = default(t);
             try
             {
-                using (SqlConnection conn = new SqlConnection(ConnString))
+                lock (ConnString)
                 {
-                    using (SqlCommand com = new SqlCommand(sql, conn))
+
+                    using (SqlConnection conn = new SqlConnection(ConnString))
                     {
-                        com.CommandType = commandType;
-                        if (Params != null && Params.Length > 0)
-                            com.Parameters.AddRange(Params);
-
-                        conn.Open();
-
-                        using (SqlDataReader reader = com.ExecuteReader())
+                        using (SqlCommand com = new SqlCommand(sql, conn))
                         {
-                            string colName = "";
-                            object value = null;
-                            Type type = typeof(t);
-                            PropertyInfo prop = null;
-                            while (reader.Read())
+                            com.CommandType = commandType;
+                            if (Params != null && Params.Length > 0)
+                                com.Parameters.AddRange(Params);
+
+                            conn.Open();
+
+                            using (SqlDataReader reader = com.ExecuteReader())
                             {
-                                tmp = new t();
-                                for (int i = 0; i < reader.FieldCount; i++)
+                                string colName = "";
+                                object value = null;
+                                Type type = typeof(t);
+                                PropertyInfo prop = null;
+                                while (reader.Read())
                                 {
-                                    colName = reader.GetName(i);
-                                    colName = colName.Replace(" ", "");//spaces don't work in names, SqlMetal will just remove them... So will we.
-                                    value = reader[i];
+                                    tmp = new t();
+                                    for (int i = 0; i < reader.FieldCount; i++)
+                                    {
+                                        colName = reader.GetName(i);
+                                        colName = colName.Replace(" ", ""); //spaces don't work in names, SqlMetal will just remove them... So will we.
+                                        value = reader[i];
 
-                                    if (string.IsNullOrEmpty(colName))
-                                        prop = type.GetProperties()[i];
-                                    else
-                                        prop = type.GetProperty(colName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+                                        if (string.IsNullOrEmpty(colName))
+                                            prop = type.GetProperties()[i];
+                                        else
+                                            prop = type.GetProperty(colName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
 
 
-                                    SetPropetyValue(tmp, value, prop);
+                                        SetPropetyValue(tmp, value, prop);
+                                    }
+                                    retVal.Add(tmp);
                                 }
-                                retVal.Add(tmp);
+                                reader.Close();
                             }
-                            reader.Close();
+                            conn.Close();
                         }
-                        conn.Close();
                     }
                 }
             }
@@ -199,57 +209,80 @@ namespace System.Data
             t tmp = default(t);
             try
             {
-                using (SqlConnection conn = new SqlConnection(ConnString))
+                lock (ConnString)
                 {
-                    using (SqlCommand com = new SqlCommand(sql, conn))
+                    using (SqlConnection conn = new SqlConnection(ConnString))
                     {
-                        com.CommandType = commandType;
-                        if (Params != null && Params.Length > 0)
-                            com.Parameters.AddRange(Params);
-
-                        conn.Open();
-
-                        using (SqlDataReader reader = com.ExecuteReader())
+                        using (SqlCommand com = new SqlCommand(sql, conn))
                         {
-                            string colName = "";
-                            object value = null;
-                            Type type = typeof(t);
-                            PropertyInfo prop = null;
+                            com.CommandType = commandType;
+                            if (Params != null && Params.Length > 0)
+                                com.Parameters.AddRange(Params);
 
-                            if (reader.Read())
+                            conn.Open();
+
+                            using (SqlDataReader reader = com.ExecuteReader())
                             {
-                                tmp = new t();
-                                for (int i = 0; i < reader.FieldCount; i++)
+                                string colName = "";
+                                object value = null;
+                                Type type = typeof(t);
+                                PropertyInfo prop = null;
+
+                                if (reader.Read())
                                 {
-                                    colName = reader.GetName(i);
-                                    value = reader[i];
+                                    tmp = new t();
+                                    for (int i = 0; i < reader.FieldCount; i++)
+                                    {
+                                        colName = reader.GetName(i);
+                                        value = reader[i];
 
-                                    prop = type.GetProperty(colName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+                                        prop = type.GetProperty(colName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
 
-                                    SetPropetyValue(tmp, value, prop);
+                                        SetPropetyValue(tmp, value, prop);
+                                    }
                                 }
+                                reader.Close();
                             }
-                            reader.Close();
+                            conn.Close();
                         }
-                        conn.Close();
                     }
                 }
             }
             catch (SqlException e)
             {
                 StringBuilder sb = new StringBuilder(sql);
-                foreach( var p in Params )
+                foreach (var p in Params)
                 {
                     sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
                 }
 
 
-                Logger.Warn(e,sb.ToString());
+                Logger.Warn(e, sb.ToString());
             }
 
 
             return tmp;
         }
+
+        //public static t BulkInsert<t>( string tableName, List<t> rows  ) where t : new( )
+        //{
+        //    if( rows.Count > 0 )
+        //    {
+        //        t r = rows.FirstOrDefault();
+        //        using (SqlConnection conn = new SqlConnection(ConnString))
+        //        {
+        //            using (System.Data.SqlClient.SqlBulkCopy bulkCopy = new SqlBulkCopy(conn))
+        //            {
+        //                bulkCopy.DestinationTableName = tableName;
+        //                foreach()
+        //                bulkCopy.ColumnMappings.Add(col.ColumnName, col.ColumnName);
+
+
+        //                bulkCopy.WriteToServer();
+        //            }
+        //        }
+        //    }
+        //}
 
         private static void SetPropetyValue(object tmp, object value, PropertyInfo prop)
         {
@@ -271,7 +304,7 @@ namespace System.Data
                                 System.Xml.Linq.XElement elem = System.Xml.Linq.XElement.Parse(tmpVal);
                                 prop.SetValue(tmp, elem, null);
                             }
-                            catch 
+                            catch
                             {
                                 try//make sure there is a root node
                                 {
