@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Web;
@@ -15,23 +16,23 @@ namespace System
 {
     public static class Extensions
     {
-        /// <summary>
-        /// Parses a request string and returns it's nullable int value
-        /// </summary>
-        public static int? ToInt(this HttpRequest req, string key)
-        {
-            int? retVal = null;
-            try
-            {
-                int tmp = -1;
-                if (req[key] != null && !string.IsNullOrEmpty(req[key]))
-                    if (int.TryParse(req[key], out tmp))
-                        retVal = tmp;
-            }
-            catch
-            { }
-            return retVal;
-        }
+        ///// <summary>
+        ///// Parses a request string and returns it's nullable int value
+        ///// </summary>
+        //public static int? ToInt(this HttpRequest req, string key)
+        //{
+        //    int? retVal = null;
+        //    try
+        //    {
+        //        int tmp = -1;
+        //        if (req[key] != null && !string.IsNullOrEmpty(req[key]))
+        //            if (int.TryParse(req[key], out tmp))
+        //                retVal = tmp;
+        //    }
+        //    catch
+        //    { }
+        //    return retVal;
+        //}
         /// <summary>
         /// Parses a string and returns it's nullable int value
         /// </summary>
@@ -489,6 +490,19 @@ namespace System
             System.Text.RegularExpressions.Regex r = new Text.RegularExpressions.Regex("\\s");
             s = r.Replace(s, "");
             return s;
+        }
+
+        public static string RenderControl( this System.Web.UI.UserControl c )
+        {
+            StringBuilder sb = new StringBuilder();
+            using( System.IO.StringWriter sw = new StringWriter( sb ) )
+            {
+                using( HtmlTextWriter w = new HtmlTextWriter( sw ) )
+                {
+                    c.RenderControl( w );
+                }
+            }
+            return sb.ToString();
         }
 
     }

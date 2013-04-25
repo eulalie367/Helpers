@@ -21,7 +21,7 @@ namespace System.Data
             get
             {
                 if (string.IsNullOrEmpty(connString))
-                    connString = ConfigurationManager.ConnectionStrings["cci"].ConnectionString;
+                    connString = ConfigurationManager.ConnectionStrings["DBString"].ConnectionString;
                 return connString;
             }
         }
@@ -58,7 +58,14 @@ namespace System.Data
             }
             catch (SqlException e)
             {
-                Logger.Warn(e);
+                StringBuilder sb = new StringBuilder(sql);
+                foreach (var p in Params)
+                {
+                    sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
+                }
+
+
+                Logger.Warn(e, sb.ToString());
             }
 
             return retVal;
@@ -96,7 +103,14 @@ namespace System.Data
             }
             catch (SqlException e)
             {
-                Logger.Warn(e);
+                StringBuilder sb = new StringBuilder(sql);
+                foreach (var p in Params)
+                {
+                    sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
+                }
+
+
+                Logger.Warn(e, sb.ToString());
             }
 
             return retVal;
@@ -180,7 +194,14 @@ namespace System.Data
             }
             catch (SqlException e)
             {
-                Logger.Warn(e);
+                StringBuilder sb = new StringBuilder(sql);
+                foreach (var p in Params)
+                {
+                    sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
+                }
+
+
+                Logger.Warn(e, sb.ToString());
             }
 
 
