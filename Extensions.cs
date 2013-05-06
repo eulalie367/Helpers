@@ -264,6 +264,10 @@ namespace System
             dt = dt.ToUniversalTime();
             return dt.ToString("ddd, dd MMM yyyy HH:mm:ss G\\MT");
         }
+        public static long ToUnixTimeStamp(this DateTime dt)
+        {
+            return (long)(dt - new DateTime(1970, 1, 1).ToLocalTime()).TotalSeconds;
+        }
 
         public static string TruncateWholeString(this string s, int length, string trailingString)
         {

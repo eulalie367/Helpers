@@ -293,25 +293,32 @@ namespace System.Data
             return tmp;
         }
 
-        //public static t BulkInsert<t>( string tableName, List<t> rows  ) where t : new( )
-        //{
-        //    if( rows.Count > 0 )
-        //    {
-        //        t r = rows.FirstOrDefault();
-        //        using (SqlConnection conn = new SqlConnection(ConnString))
-        //        {
-        //            using (System.Data.SqlClient.SqlBulkCopy bulkCopy = new SqlBulkCopy(conn))
-        //            {
-        //                bulkCopy.DestinationTableName = tableName;
-        //                foreach()
-        //                bulkCopy.ColumnMappings.Add(col.ColumnName, col.ColumnName);
+        public static void BulkInsert(DataTable dt, string tableName)
+        {
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(ConnString))
+                {
+                    using (System.Data.SqlClient.SqlBulkCopy bulkCopy = new SqlBulkCopy(conn))
+                    {
+                        bulkCopy.DestinationTableName = tableName;
 
+                        foreach (DataColumn dc in dt.Columns)
+                        {
+                            string cn = dc.ColumnName.Substring(0, 1).ToUpper() + dc.ColumnName.Substring(1, dc.ColumnName.Length - 1);
+                            bulkCopy.ColumnMappings.Add(cn, dc.ColumnName);
+                        }
 
-        //                bulkCopy.WriteToServer();
-        //            }
-        //        }
-        //    }
-        //}
+                        conn.Open();
+                        bulkCopy.WriteToServer(dt);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn(ex);
+            }
+        }
 
         private static void SetPropetyValue(object tmp, object value, PropertyInfo prop)
         {
@@ -319,9 +326,7 @@ namespace System.Data
 
             if (!(value is DBNull) && prop != null)
             {
-                if (prop.PropertyType != typeof(System.Xml.Linq.XElement))//this really comes back as a string from the db.
-                    prop.SetValue(tmp, value, null);
-                else
+                if (prop.PropertyType == typeof(System.Xml.Linq.XElement))
                 {
                     if (value != null)
                     {
@@ -345,6 +350,14 @@ namespace System.Data
                             }
                         }
                     }
+                }
+                else if (prop.PropertyType == typeof(Uri))
+                {
+                    prop.SetValue(tmp, new Uri(value.ToString()), null);
+                }
+                else
+                {
+                    prop.SetValue(tmp, value, null);
                 }
             }
         }
