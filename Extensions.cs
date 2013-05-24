@@ -105,6 +105,12 @@ namespace System
             {
                 switch (str.ToLower())
                 {
+                    case "on":
+                        return true;
+                        break;
+                    case "off":
+                        return false;
+                        break;
                     case "yes":
                         return true;
                         break;
@@ -220,9 +226,10 @@ namespace System
         {
             if (req != null)
             {
-                req.Method = "POST";
+                req.Method = "GET";
                 if (!string.IsNullOrEmpty(pData))
                 {
+                    req.Method = "POST";
                     using (System.IO.Stream reqStream = req.GetRequestStream())
                     {
                         ASCIIEncoding encoding = new ASCIIEncoding();
@@ -266,7 +273,7 @@ namespace System
         }
         public static long ToUnixTimeStamp(this DateTime dt)
         {
-            return (long)(dt - new DateTime(1970, 1, 1).ToLocalTime()).TotalSeconds;
+            return (long)(dt - new DateTime(1970, 1, 1)).TotalSeconds;
         }
 
         public static string TruncateWholeString(this string s, int length, string trailingString)
@@ -495,18 +502,104 @@ namespace System
             s = r.Replace(s, "");
             return s;
         }
+        public static string PercentEncode(this string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return string.Empty;
+            }
 
-        public static string RenderControl( this System.Web.UI.UserControl c )
+            value = Uri.EscapeDataString(value);
+
+            // UrlEncode escapes with lowercase characters (e.g. %2f) but oAuth needs %2F
+            value = System.Text.RegularExpressions.Regex.Replace(value, "(%[0-9a-f][0-9a-f])", c => c.Value.ToUpper());
+
+            // these characters are not escaped by UrlEncode() but needed to be escaped
+            value = value
+                .Replace("(", "%28")
+                .Replace(")", "%29")
+                .Replace("$", "%24")
+                .Replace("!", "%21")
+                .Replace("*", "%2A")
+                .Replace("'", "%27");
+
+            // these characters are escaped by UrlEncode() but will fail if unescaped!
+            value = value.Replace("%7E", "~");
+
+            return value;
+        }
+
+        public static string RenderControl(this System.Web.UI.UserControl c)
         {
             StringBuilder sb = new StringBuilder();
-            using( System.IO.StringWriter sw = new StringWriter( sb ) )
+            using (System.IO.StringWriter sw = new StringWriter(sb))
             {
-                using( HtmlTextWriter w = new HtmlTextWriter( sw ) )
+                using (HtmlTextWriter w = new HtmlTextWriter(sw))
                 {
-                    c.RenderControl( w );
+                    c.RenderControl(w);
                 }
             }
             return sb.ToString();
+        }
+
+        public static HttpWebRequest AddOAuth(this HttpWebRequest req, string ConsumerKey, string ConsumerSecret, string AccessToken, string AccessTokenSecret)
+        {
+            string nonce = new Random().Next(Int16.MaxValue, Int32.MaxValue).ToString("X", System.Globalization.CultureInfo.InvariantCulture);
+            string timeStamp = DateTime.UtcNow.ToUnixTimeStamp().ToString();
+
+            // Create the base string. This is the string that will be hashed for the signature.
+            Dictionary<string, string> param = new Dictionary<string, string>();
+            param.Add("oauth_consumer_key", ConsumerKey);
+            param.Add("oauth_nonce", nonce);
+            param.Add("oauth_signature_method", "HMAC-SHA1");
+            param.Add("oauth_timestamp", timeStamp);
+            param.Add("oauth_token", AccessToken);
+            param.Add("oauth_version", "1.0");
+
+
+            foreach (string kv in req.RequestUri.Query.Replace("?", "").Split('&'))
+            {
+                string[] akv = kv.Split('=');
+                if (akv.Length == 2)
+                {
+                    param.Add(akv[0], akv[1]);
+                }
+            }
+
+            StringBuilder sParam = new StringBuilder(); ;
+            foreach (KeyValuePair<string, string> p in param.OrderBy(k => k.Key))
+            {
+                if (sParam.Length > 0)
+                    sParam.Append("&");
+
+                sParam.AppendFormat("{0}={1}", p.Key.PercentEncode(), p.Value.PercentEncode());
+            }
+
+
+            string signatureBaseString
+                = string.Format("{0}&{1}&{2}",
+                req.Method.ToUpper(),
+                req.RequestUri.AbsoluteUri.Replace(req.RequestUri.Query, "").PercentEncode(),
+                sParam.ToString().PercentEncode()
+            );
+
+            
+            // Create our hash key (you might say this is a password)
+            string signatureKey = string.Format("{0}&{1}", ConsumerSecret.PercentEncode(), AccessTokenSecret.PercentEncode());
+
+            
+            // Generate the hash
+            System.Security.Cryptography.HMACSHA1 hmacsha1 = new System.Security.Cryptography.HMACSHA1(Encoding.UTF8.GetBytes(signatureKey));
+            byte[] signatureBytes = hmacsha1.ComputeHash(Encoding.UTF8.GetBytes(signatureBaseString));
+
+            string signature = Convert.ToBase64String(signatureBytes).PercentEncode();
+
+            string oauth = "OAuth realm=\"{0}\",oauth_consumer_key=\"{1}\",oauth_nonce=\"{2}\",oauth_signature_method=\"HMAC-SHA1\",oauth_timestamp=\"{3}\",oauth_token=\"{4}\",oauth_version=\"1.0\",oauth_signature=\"{5}\"";
+            oauth = string.Format(oauth, "Spiral16", ConsumerKey, nonce, timeStamp, AccessToken, signature);
+
+            req.Headers.Add("Authorization", oauth);
+
+            return req;
         }
 
     }

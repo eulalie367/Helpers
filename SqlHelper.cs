@@ -87,6 +87,12 @@ namespace System.Data
                     {
                         using (SqlCommand com = new SqlCommand(sql, conn))
                         {
+                            StringBuilder sb = new StringBuilder(sql);
+                            foreach (var p in Params)
+                            {
+                                sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
+                            }
+
                             com.CommandTimeout = int.MaxValue;
                             com.CommandType = commandType;
                             if (Params != null && Params.Length > 0)
@@ -111,6 +117,7 @@ namespace System.Data
 
 
                 Logger.Warn(e, sb.ToString());
+                throw new Exception(sb.ToString(),e);
             }
 
             return retVal;
