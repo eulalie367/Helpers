@@ -224,6 +224,10 @@ namespace System
         }
         public static string GetResponseString(this HttpWebRequest req, string pData)
         {
+            return GetResponseString(req, pData, null, null, null, null);
+        }
+        public static string GetResponseString(this HttpWebRequest req, string pData, string ConsumerKey, string ConsumerSecret, string AccessToken, string AccessTokenSecret)
+        {
             if (req != null)
             {
                 req.Method = "GET";
@@ -237,6 +241,12 @@ namespace System
                         reqStream.Write(data, 0, data.Length);
                     }
                 }
+
+                if (!string.IsNullOrEmpty(ConsumerKey) && !string.IsNullOrEmpty(ConsumerSecret) && !string.IsNullOrEmpty(AccessToken) && !string.IsNullOrEmpty(AccessTokenSecret))
+                {
+                    req.AddOAuth(pData, ConsumerKey, ConsumerSecret, AccessToken, AccessTokenSecret);
+                }
+
                 using (HttpWebResponse resp = req.GetResponse() as HttpWebResponse)
                 {
                     using (System.IO.Stream st = resp.GetResponseStream())
@@ -544,6 +554,10 @@ namespace System
 
         public static HttpWebRequest AddOAuth(this HttpWebRequest req, string ConsumerKey, string ConsumerSecret, string AccessToken, string AccessTokenSecret)
         {
+            return req.AddOAuth("", ConsumerKey, ConsumerSecret, AccessToken, AccessTokenSecret);
+        }
+        public static HttpWebRequest AddOAuth(this HttpWebRequest req, string pData, string ConsumerKey, string ConsumerSecret, string AccessToken, string AccessTokenSecret)
+        {
             string nonce = new Random().Next(Int16.MaxValue, Int32.MaxValue).ToString("X", System.Globalization.CultureInfo.InvariantCulture);
             string timeStamp = DateTime.UtcNow.ToUnixTimeStamp().ToString();
 
@@ -556,8 +570,9 @@ namespace System
             param.Add("oauth_token", AccessToken);
             param.Add("oauth_version", "1.0");
 
+            pData += req.RequestUri.Query;
 
-            foreach (string kv in req.RequestUri.Query.Replace("?", "").Split('&'))
+            foreach (string kv in pData.Replace("?", "&").Split('&'))
             {
                 string[] akv = kv.Split('=');
                 if (akv.Length == 2)
@@ -575,11 +590,16 @@ namespace System
                 sParam.AppendFormat("{0}={1}", p.Key.PercentEncode(), p.Value.PercentEncode());
             }
 
+            string url = req.RequestUri.AbsoluteUri;
+            if (!string.IsNullOrEmpty(req.RequestUri.Query))
+            {
+                url = url.Replace(req.RequestUri.Query, "");
+            }
 
             string signatureBaseString
                 = string.Format("{0}&{1}&{2}",
                 req.Method.ToUpper(),
-                req.RequestUri.AbsoluteUri.Replace(req.RequestUri.Query, "").PercentEncode(),
+                url.PercentEncode(),
                 sParam.ToString().PercentEncode()
             );
 
