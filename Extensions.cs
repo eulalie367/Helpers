@@ -220,17 +220,21 @@ namespace System
 
         public static string GetResponseString(this HttpWebRequest req)
         {
-            return GetResponseString(req, "");
+            return req.GetResponseString(null, null, null, null, null);
         }
         public static string GetResponseString(this HttpWebRequest req, string pData)
         {
-            return GetResponseString(req, pData, null, null, null, null);
+            return req.GetResponseString(pData, null, null, null, null);
+        }
+        public static string GetResponseString(this HttpWebRequest req, string ConsumerKey, string ConsumerSecret, string AccessToken, string AccessTokenSecret)
+        {
+            return req.GetResponseString(null, ConsumerKey, ConsumerSecret, AccessToken, AccessTokenSecret);
         }
         public static string GetResponseString(this HttpWebRequest req, string pData, string ConsumerKey, string ConsumerSecret, string AccessToken, string AccessTokenSecret)
         {
             if (req != null)
             {
-                req.Method = "GET";
+                //req.Method = "GET";//Get is the default anyway.
                 if (!string.IsNullOrEmpty(pData))
                 {
                     req.Method = "POST";
