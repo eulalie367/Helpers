@@ -150,6 +150,10 @@ namespace System.Data
         /// <returns></returns>
         public static List<t> FillEntities<t>(string sql, SqlParameter[] Params, CommandType commandType) where t : new()
         {
+            return FillEntities<t>(sql, Params, commandType, SqlHelper.ConnString);
+        }
+        public static List<t> FillEntities<t>(string sql, SqlParameter[] Params, CommandType commandType, string connString) where t : new()
+        {
             List<t> retVal = new List<t>();
             t tmp = default(t);
             try
@@ -157,7 +161,7 @@ namespace System.Data
                 lock (lockFillEntities)
                 {
 
-                    using (SqlConnection conn = new SqlConnection(ConnString))
+                    using (SqlConnection conn = new SqlConnection(connString))
                     {
                         using (SqlCommand com = new SqlCommand(sql, conn))
                         {
