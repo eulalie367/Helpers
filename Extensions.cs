@@ -542,6 +542,33 @@ namespace System
 
             return value;
         }
+        public static string PercentDecode(this string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return string.Empty;
+            }
+
+            // UrlEncode escapes with lowercase characters (e.g. %2f) but oAuth needs %2F
+            value = System.Text.RegularExpressions.Regex.Replace(value, "(%[0-9A-F][0-9A-F])", c => c.Value.ToLower());
+
+            value = Uri.UnescapeDataString(value);
+
+
+            // these characters are not escaped by UrlEncode() but needed to be escaped
+            value = value
+                .Replace("%28", "(")
+                .Replace("%29", ")")
+                .Replace("%24", "$")
+                .Replace("%21", "!")
+                .Replace("%2A", "*")
+                .Replace("%27", "'");
+
+            // these characters are escaped by UrlEncode() but will fail if unescaped!
+            //value = value.Replace("%7E", "~");
+
+            return value;
+        }
 
         public static string RenderControl(this System.Web.UI.UserControl c)
         {
@@ -581,7 +608,7 @@ namespace System
                 string[] akv = kv.Split('=');
                 if (akv.Length == 2)
                 {
-                    param.Add(akv[0], akv[1]);
+                    param.Add(akv[0], akv[1].PercentDecode());
                 }
             }
 
