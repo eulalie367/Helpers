@@ -237,7 +237,9 @@ namespace System
                 //req.Method = "GET";//Get is the default anyway.
                 if (!string.IsNullOrEmpty(pData))
                 {
-                    req.Method = "POST";
+                    if(req.Method == "GET")//don't change the method if it has been set manually.
+                        req.Method = "POST";
+    
                     using (System.IO.Stream reqStream = req.GetRequestStream())
                     {
                         ASCIIEncoding encoding = new ASCIIEncoding();
