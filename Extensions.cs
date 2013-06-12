@@ -237,9 +237,9 @@ namespace System
                 //req.Method = "GET";//Get is the default anyway.
                 if (!string.IsNullOrEmpty(pData))
                 {
-                    if(req.Method == "GET")//don't change the method if it has been set manually.
+                    if (req.Method == "GET")//don't change the method if it has been set manually.
                         req.Method = "POST";
-    
+
                     using (System.IO.Stream reqStream = req.GetRequestStream())
                     {
                         ASCIIEncoding encoding = new ASCIIEncoding();
@@ -248,7 +248,7 @@ namespace System
                     }
                 }
 
-                if (!string.IsNullOrEmpty(ConsumerKey) && !string.IsNullOrEmpty(ConsumerSecret) && !string.IsNullOrEmpty(AccessToken) && !string.IsNullOrEmpty(AccessTokenSecret))
+                if (!string.IsNullOrEmpty(ConsumerKey) && !string.IsNullOrEmpty(ConsumerSecret))
                 {
                     req.AddOAuth(pData, ConsumerKey, ConsumerSecret, AccessToken, AccessTokenSecret);
                 }
@@ -600,7 +600,8 @@ namespace System
             param.Add("oauth_nonce", nonce);
             param.Add("oauth_signature_method", "HMAC-SHA1");
             param.Add("oauth_timestamp", timeStamp);
-            param.Add("oauth_token", AccessToken);
+            if (!string.IsNullOrEmpty(AccessToken))
+                param.Add("oauth_token", AccessToken);
             param.Add("oauth_version", "1.0");
 
             pData += req.RequestUri.Query;
@@ -636,19 +637,20 @@ namespace System
                 sParam.ToString().PercentEncode()
             );
 
-            
+
             // Create our hash key (you might say this is a password)
             string signatureKey = string.Format("{0}&{1}", ConsumerSecret.PercentEncode(), AccessTokenSecret.PercentEncode());
 
-            
+
             // Generate the hash
             System.Security.Cryptography.HMACSHA1 hmacsha1 = new System.Security.Cryptography.HMACSHA1(Encoding.UTF8.GetBytes(signatureKey));
             byte[] signatureBytes = hmacsha1.ComputeHash(Encoding.UTF8.GetBytes(signatureBaseString));
 
             string signature = Convert.ToBase64String(signatureBytes).PercentEncode();
 
-            string oauth = "OAuth realm=\"{0}\",oauth_consumer_key=\"{1}\",oauth_nonce=\"{2}\",oauth_signature_method=\"HMAC-SHA1\",oauth_timestamp=\"{3}\",oauth_token=\"{4}\",oauth_version=\"1.0\",oauth_signature=\"{5}\"";
-            oauth = string.Format(oauth, "Spiral16", ConsumerKey, nonce, timeStamp, AccessToken, signature);
+            string at = string.IsNullOrEmpty(AccessToken) ? "" : string.Format("oauth_token=\"{0}\",", AccessToken);
+            string oauth = "OAuth realm=\"{0}\",oauth_consumer_key=\"{1}\",oauth_nonce=\"{2}\",oauth_signature_method=\"HMAC-SHA1\",oauth_timestamp=\"{3}\",{4}oauth_version=\"1.0\",oauth_signature=\"{5}\"";
+            oauth = string.Format(oauth, "Spiral16", ConsumerKey, nonce, timeStamp, at, signature);
 
             req.Headers.Add("Authorization", oauth);
 
