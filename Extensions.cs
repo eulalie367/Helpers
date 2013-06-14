@@ -653,6 +653,7 @@ namespace System
             oauth = string.Format(oauth, "Spiral16", ConsumerKey, nonce, timeStamp, at, signature);
 
             req.Headers.Add("Authorization", oauth);
+            req.ContentType = "application/x-www-form-urlencoded";
 
             return req;
         }
