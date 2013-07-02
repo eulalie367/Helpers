@@ -54,6 +54,13 @@ namespace System
             { }
             return retVal;
         }
+        public static Guid? ToGuid(this string str)
+        {
+            Guid retVal;
+            if(Guid.TryParse(str, out retVal))
+                return retVal;
+            return null;
+        }
         public static double? ToDouble(this string str)
         {
             double? retVal = null;
