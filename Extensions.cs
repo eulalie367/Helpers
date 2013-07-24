@@ -57,7 +57,7 @@ namespace System
         public static Guid? ToGuid(this string str)
         {
             Guid retVal;
-            if(Guid.TryParse(str, out retVal))
+            if (Guid.TryParse(str, out retVal))
                 return retVal;
             return null;
         }
@@ -669,5 +669,51 @@ namespace System
             return req;
         }
 
+        public static List<string> GetStandardOutPut(this System.Diagnostics.Process process, string cmd, string arguments)
+        {
+            List<string> retVal = new List<string>();
+            process.StartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = cmd,
+                Arguments = arguments,
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+
+            process.Start();
+            process.WaitForExit();
+
+
+            using (var std = process.StandardOutput)
+            {
+                while (!std.EndOfStream)
+                {
+                    string s = std.ReadLine();
+
+                    if (!string.IsNullOrEmpty(s))
+                    {
+                        retVal.Add(s);
+                    }
+                }
+            }
+            return retVal;
+        }
+
+        public static void RunProcess(this System.Diagnostics.Process process, string cmd, string arguments)
+        {
+            List<string> retVal = new List<string>();
+            process.StartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = cmd,
+                Arguments = arguments,
+                CreateNoWindow = true,
+                UseShellExecute = true
+            };
+
+            process.Start();
+            process.WaitForExit();
+        }
     }
 }

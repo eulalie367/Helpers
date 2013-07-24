@@ -305,6 +305,7 @@ namespace System.Data
         }
 
         public static void BulkInsert(DataTable dt, string tableName)
+
         {
             try
             {
@@ -319,7 +320,7 @@ namespace System.Data
                             string cn = dc.ColumnName.Substring(0, 1).ToUpper() + dc.ColumnName.Substring(1, dc.ColumnName.Length - 1);
                             bulkCopy.ColumnMappings.Add(cn, dc.ColumnName);
                         }
-
+                        bulkCopy.BulkCopyTimeout = 300000;
                         conn.Open();
                         bulkCopy.WriteToServer(dt);
                     }
