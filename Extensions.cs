@@ -512,6 +512,7 @@ namespace System
 
         public static Guid GetHashCode128(this string s)
         {
+            s = s.ToLower();
             System.Security.Cryptography.MD5 c = System.Security.Cryptography.MD5.Create();
             s = s.NormalizeURL();
             byte[] b = c.ComputeHash(Encoding.UTF8.GetBytes(s));
