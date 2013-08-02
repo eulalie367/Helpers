@@ -78,21 +78,19 @@ namespace System.Data
         }
         public static int ExecuteNonQuery(string sql, SqlParameter[] Params, CommandType commandType)
         {
+            return ExecuteNonQuery(sql, Params, commandType, SqlHelper.ConnString);
+        }
+        public static int ExecuteNonQuery(string sql, SqlParameter[] Params, CommandType commandType, string connString)
+        {
             int retVal = 0;
             try
             {
                 lock (lockExecuteNonQuery)
                 {
-                    using (SqlConnection conn = new SqlConnection(ConnString))
+                    using (SqlConnection conn = new SqlConnection(connString))
                     {
                         using (SqlCommand com = new SqlCommand(sql, conn))
                         {
-                            StringBuilder sb = new StringBuilder(sql);
-                            foreach (var p in Params)
-                            {
-                                sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
-                            }
-
                             com.CommandTimeout = int.MaxValue;
                             com.CommandType = commandType;
                             if (Params != null && Params.Length > 0)
@@ -109,11 +107,11 @@ namespace System.Data
             }
             catch (SqlException e)
             {
-                StringBuilder sb = new StringBuilder(sql);
-                foreach (var p in Params)
-                {
-                    sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
-                }
+                //StringBuilder sb = new StringBuilder(sql);
+                //foreach (var p in Params)
+                //{
+                //    sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
+                //}
 
 
                 Logger.Warn(e, sb.ToString());
@@ -170,6 +168,7 @@ namespace System.Data
                                 com.Parameters.AddRange(Params);
 
                             conn.Open();
+
 
                             using (SqlDataReader reader = com.ExecuteReader())
                             {
@@ -305,11 +304,15 @@ namespace System.Data
         }
 
         public static void BulkInsert(DataTable dt, string tableName)
+        {
+            BulkInsert(dt,tableName, SqlHelper.ConnString);
+        }
+        public static void BulkInsert(DataTable dt, string tableName, string connString)
 
         {
             try
             {
-                using (SqlConnection conn = new SqlConnection(ConnString))
+                using (SqlConnection conn = new SqlConnection(connString))
                 {
                     using (System.Data.SqlClient.SqlBulkCopy bulkCopy = new SqlBulkCopy(conn))
                     {
