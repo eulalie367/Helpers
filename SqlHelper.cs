@@ -114,8 +114,8 @@ namespace System.Data
                 //}
 
 
-                Logger.Warn(e, sb.ToString());
-                throw new Exception(sb.ToString(),e);
+                //Logger.Warn(e, sb.ToString());
+                //throw new Exception(sb.ToString(),e);
             }
 
             return retVal;
