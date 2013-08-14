@@ -512,9 +512,9 @@ namespace System
 
         public static Guid GetHashCode128(this string s)
         {
-            s = s.ToLower();
             System.Security.Cryptography.MD5 c = System.Security.Cryptography.MD5.Create();
             s = s.NormalizeURL();
+            s = s.ToLower();
             byte[] b = c.ComputeHash(Encoding.UTF8.GetBytes(s));
             int z = System.Net.IPAddress.HostToNetworkOrder(BitConverter.ToInt32(b, 0));
             short y = System.Net.IPAddress.HostToNetworkOrder(BitConverter.ToInt16(b, 4));
@@ -525,7 +525,8 @@ namespace System
 
         public static string NormalizeURL(this string s)
         {
-            s = s.ToLower();
+            //tolower breaks youtube
+//            s = s.ToLower();
             System.Text.RegularExpressions.Regex r = new Text.RegularExpressions.Regex("\\s");
             s = r.Replace(s, "");
             return s;
@@ -716,5 +717,27 @@ namespace System
             process.Start();
             process.WaitForExit();
         }
+
+        public static string JSONStringify(this string s)
+        {
+            try
+            {
+                var json = Newtonsoft.Json.Linq.JObject.Parse(s);
+                return json.ToString(Newtonsoft.Json.Formatting.Indented);
+            }
+            catch
+            {
+                try
+                {
+                    var json = Newtonsoft.Json.Linq.JArray.Parse(s);
+                    return json.ToString(Newtonsoft.Json.Formatting.Indented);
+                }
+                catch 
+                {
+                    return "";
+                }
+            }
+        }
     }
+
 }
