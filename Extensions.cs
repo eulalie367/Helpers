@@ -54,6 +54,24 @@ namespace System
             { }
             return retVal;
         }
+        public static long? ToLong(this object obj)
+        {
+            long? retVal = null;
+            try
+            {
+                if (obj != null)
+                {
+                    string str = obj.ToString();
+                    long tmp = -1;
+                    if (!string.IsNullOrEmpty(str))
+                        if (long.TryParse(str, out tmp))
+                            retVal = tmp;
+                }
+            }
+            catch
+            { }
+            return retVal;
+        }
         public static Guid? ToGuid(this string str)
         {
             Guid retVal;
