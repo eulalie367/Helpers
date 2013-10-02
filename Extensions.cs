@@ -756,6 +756,22 @@ namespace System
                 }
             }
         }
+
+        public static string XmlEscape(this string unescaped)
+        {
+            XmlDocument doc = new XmlDocument();
+            var node = doc.CreateElement("root");
+            node.InnerText = unescaped;
+            return node.InnerXml;
+        }
+
+        public static string XmlUnescape(this string escaped)
+        {
+            XmlDocument doc = new XmlDocument();
+            var node = doc.CreateElement("root");
+            node.InnerXml = escaped;
+            return node.InnerText;
+        }
     }
 
 }
