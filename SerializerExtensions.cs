@@ -4,8 +4,9 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Xml.Serialization;
 
-namespace Extensions
+namespace System
 {
     public static class SerializerExtensions
     {
@@ -70,6 +71,78 @@ namespace Extensions
                     BinaryFormatter formatter = new BinaryFormatter();
                     ms.Position = 0;
                     var a = formatter.Deserialize(ms);
+                    retVal = a as T;
+                }
+            }
+            catch
+            {
+            }
+            return retVal;
+        }
+
+
+
+        public static bool Serialze_Xml<T>(this IEnumerable<T> ls, string fileName)
+        {
+            try
+            {
+                using (Stream str = File.OpenWrite(fileName))
+                {
+                    XmlSerializer ser = new XmlSerializer(ls.GetType());
+                    ser.Serialize(str, ls);
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        public static byte[] Serialze_Xml<T>(this IEnumerable<T> ls)
+        {
+            byte[] retVal = null;
+            try
+            {
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    XmlSerializer ser = new XmlSerializer(typeof(T));
+                    ser.Serialize(ms, ls);
+                    ms.Position = 0;
+                    retVal = ms.ToArray();
+                }
+            }
+            catch
+            {
+            }
+            return retVal;
+        }
+        public static T DeSerialze_Xml<T>(this string fileName) where T : class
+        {
+            T retVal = default(T);
+            try
+            {
+                using (Stream str = File.OpenRead(fileName))
+                {
+                    XmlSerializer ser = new XmlSerializer(typeof(T));
+                    var a = ser.Deserialize(str);
+                    retVal = a as T;
+                }
+            }
+            catch
+            {
+            }
+            return retVal;
+        }
+        public static T DeSerialze_Xml<T>(this byte[] obj) where T : class
+        {
+            T retVal = default(T);
+            try
+            {
+                using (MemoryStream ms = new MemoryStream(obj))
+                {
+                    XmlSerializer ser = new XmlSerializer(typeof(T));
+                    ms.Position = 0;
+                    var a = ser.Deserialize(ms);
                     retVal = a as T;
                 }
             }
