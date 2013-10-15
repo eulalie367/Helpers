@@ -762,7 +762,7 @@ namespace System
             XmlDocument doc = new XmlDocument();
             var node = doc.CreateElement("root");
             node.InnerText = unescaped;
-            return node.InnerXml;
+            return node.InnerXml.Replace("&#x0;", "");
         }
 
         public static string XmlUnescape(this string escaped)
