@@ -759,7 +759,10 @@ namespace System
 
         public static string XmlEscape(this string unescaped)
         {
-            return XmlConvert.EncodeName(unescaped);
+
+            return unescaped.Replace("<", "&#60;").Replace(">", "&#62;").Replace("\"", "&#34;").Replace("&", "&#38;").Replace("'", "&#39;");
+
+//            return XmlConvert.EncodeName(unescaped);
         }
 
         public static string XmlUnescape(this string escaped)
