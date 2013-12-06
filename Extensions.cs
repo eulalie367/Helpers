@@ -124,8 +124,9 @@ namespace System
         /// <summary>
         /// Parses a string and returns it's nullable bool value
         /// </summary>
-        public static Boolean? ToBool(this string str)
+        public static Boolean? ToBool(this object obj)
         {
+            string str = obj.ToString();
             if (!string.IsNullOrEmpty(str))
             {
                 switch (str.ToLower())
