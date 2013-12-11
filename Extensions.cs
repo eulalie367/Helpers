@@ -281,14 +281,21 @@ namespace System
 
                 using (HttpWebResponse resp = req.GetResponse() as HttpWebResponse)
                 {
-                    using (System.IO.Stream st = resp.GetResponseStream())
+                    try
                     {
-                        using (System.IO.StreamReader sr = new System.IO.StreamReader(st))
+                        using (System.IO.Stream st = resp.GetResponseStream())
                         {
-                            return sr.ReadToEnd();
+                            using (System.IO.StreamReader sr = new System.IO.StreamReader(st))
+                            {
+                                return sr.ReadToEnd();
+                            }
                         }
                     }
-
+                    catch (WebException ex)
+                    { 
+                        ProtocolException pex = (ProtocolException)ex;
+                        pex.StatusCode = resp.StatusCode.ToInt() ?? 401;
+                    }
                 }
             }
             return "";
@@ -775,4 +782,24 @@ namespace System
         }
     }
 
+    public class ProtocolException : WebException
+    {
+        public int StatusCode{get;set;}
+
+        public ProtocolException() : base()
+        {}
+        public ProtocolException(string message)
+            : base(message)
+        {}
+        public ProtocolException(int statusCode)
+            : base()
+        {
+            this.StatusCode = statusCode;
+        }
+        public ProtocolException(int statusCode, string message)
+            : base(message)
+        {
+            this.StatusCode = statusCode;
+        }
+    }
 }
