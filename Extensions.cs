@@ -11,6 +11,7 @@ using System.Xml;
 using System.Xml.Linq;
 using System.Web.UI;
 using System.Net;
+using System.Text.RegularExpressions;
 
 namespace System
 {
@@ -649,6 +650,40 @@ namespace System
             var node = doc.CreateElement("root");
             node.InnerXml = escaped;
             return node.InnerText;
+        }
+        public static string FormatWith(this string format, object source)
+        {
+            return FormatWith(format, null, source);
+        }
+
+        public static string FormatWith(this string format, IFormatProvider provider, object source)
+        {
+            if (!string.IsNullOrEmpty(format))
+            {
+                Regex r = new Regex(@"(?<start>\{)+(?<property>[\w\.\[\]]+)(?<format>:[^}]+)?(?<end>\})+",
+                  RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
+                List<object> values = new List<object>();
+                string rewrittenFormat = r.Replace(format, delegate(Match m)
+                {
+                    Group startGroup = m.Groups["start"];
+                    Group propertyGroup = m.Groups["property"];
+                    Group formatGroup = m.Groups["format"];
+                    Group endGroup = m.Groups["end"];
+
+                    if (propertyGroup.Value.ToInt().HasValue)
+                    {
+                        return startGroup.Value + propertyGroup.Value + endGroup.Value;
+                    }
+                    else
+                    {
+                        return DataBinder.Eval(source, propertyGroup.Value).ToString();
+                    }
+                });
+
+                return rewrittenFormat;
+            }
+            return format;
         }
     }
 }
