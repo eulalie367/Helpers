@@ -63,7 +63,7 @@ namespace System
                         HttpWebResponse r = ex.Response as HttpWebResponse;
                         if (r != null)
                         {
-                            throw new ProtocolException(r.StatusCode, ex.Message);
+                            throw new ProtocolException((ApiStatusCode) r.StatusCode, ex.Message);
                         }
                     }
                     throw ex;
@@ -146,10 +146,14 @@ namespace System
         }
 
     }
-
+    public enum ApiStatusCode : long
+    {
+        BadRequest = 400,
+        TooManyRequest = 429
+    }
     public class ProtocolException : WebException
     {
-        public HttpStatusCode StatusCode { get; set; }
+        public ApiStatusCode StatusCode { get; set; }
 
         public ProtocolException()
             : base()
@@ -157,12 +161,12 @@ namespace System
         public ProtocolException(string message)
             : base(message)
         { }
-        public ProtocolException(HttpStatusCode statusCode)
+        public ProtocolException(ApiStatusCode statusCode)
             : base()
         {
             this.StatusCode = statusCode;
         }
-        public ProtocolException(HttpStatusCode statusCode, string message)
+        public ProtocolException(ApiStatusCode statusCode, string message)
             : base(message)
         {
             this.StatusCode = statusCode;
