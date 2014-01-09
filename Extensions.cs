@@ -496,7 +496,7 @@ namespace System
         public static string NormalizeURL(this string s)
         {
             //tolower breaks youtube
-//            s = s.ToLower();
+            //            s = s.ToLower();
             System.Text.RegularExpressions.Regex r = new Text.RegularExpressions.Regex("\\s");
             s = r.Replace(s, "");
             return s;
@@ -629,7 +629,7 @@ namespace System
                     var json = Newtonsoft.Json.Linq.JArray.Parse(s);
                     return json.ToString(Newtonsoft.Json.Formatting.Indented);
                 }
-                catch 
+                catch
                 {
                     return "";
                 }
@@ -641,7 +641,7 @@ namespace System
 
             return unescaped.Replace("<", "&#60;").Replace(">", "&#62;").Replace("\"", "&#34;").Replace("&", "&#38;").Replace("'", "&#39;");
 
-//            return XmlConvert.EncodeName(unescaped);
+            //            return XmlConvert.EncodeName(unescaped);
         }
 
         public static string XmlUnescape(this string escaped)
@@ -684,6 +684,39 @@ namespace System
                 return rewrittenFormat;
             }
             return format;
+        }
+
+        public static async System.Threading.Tasks.Task ForEachAsync<T>(this IEnumerable<T> source, Func<T, System.Threading.Tasks.Task> body)
+        {
+            foreach (var item in source) await body(item);
+        }
+        public static void ForEachAsync<T>(this IEnumerable<T> source, int maxThreads, Func<T, System.Threading.Tasks.Task> body)
+        {
+            source.ForEachAsync<T>(maxThreads, body, true);
+        }
+        public static void ForEachAsync<T>(this IEnumerable<T> source, int maxThreads, Func<T, System.Threading.Tasks.Task> body, bool wait)
+        {
+            var partitions = System.Collections.Concurrent.Partitioner.Create(source).GetPartitions(maxThreads);
+
+            IEnumerable<System.Threading.Tasks.Task> tasks = partitions.Select
+                (p =>
+                    System.Threading.Tasks.Task.Run
+                    (
+                        async delegate
+                        {
+                            using (p)
+                            {
+                                while (p.MoveNext())
+                                {
+                                    await body(p.Current);
+                                }
+                            }
+                        }
+                    )
+                );
+
+            if(wait)
+                System.Threading.Tasks.Task.WaitAll( tasks.ToArray() );
         }
     }
 }
