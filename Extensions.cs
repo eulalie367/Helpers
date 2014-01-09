@@ -638,8 +638,9 @@ namespace System
 
         public static string XmlEscape(this string unescaped)
         {
-
-            return unescaped.Replace("<", "&#60;").Replace(">", "&#62;").Replace("\"", "&#34;").Replace("&", "&#38;").Replace("'", "&#39;");
+            string retVal = unescaped.Replace((char)0x00, ' ').Replace((char)0x01, ' ').Replace((char)0x02, ' ').Replace((char)0x03, ' ').Replace((char)0x04, ' ').Replace((char)0x05, ' ').Replace((char)0x06, ' ').Replace((char)0x07, ' ').Replace((char)0x08, ' ').Replace((char)0x0B, ' ').Replace((char)0x0C, ' ').Replace((char)0x0E, ' ').Replace((char)0x0F, ' ').Replace((char)0x10, ' ').Replace((char)0x11, ' ').Replace((char)0x12, ' ').Replace((char)0x13, ' ').Replace((char)0x14, ' ').Replace((char)0x15, ' ').Replace((char)0x16, ' ').Replace((char)0x17, ' ').Replace((char)0x18, ' ').Replace((char)0x19, ' ').Replace((char)0x1A, ' ').Replace((char)0x1B, ' ').Replace((char)0x1C, ' ').Replace((char)0x1D, ' ').Replace((char)0x1E, ' ').Replace((char)0x1F, ' ').Replace((char)0x7F, ' ');
+            retVal = retVal.Replace("<", "&#60;").Replace(">", "&#62;").Replace("\"", "&#34;").Replace("&", "&#38;").Replace("'", "&#39;");
+            return retVal.Trim();
 
             //            return XmlConvert.EncodeName(unescaped);
         }
@@ -696,7 +697,8 @@ namespace System
         }
         public static void ForEachAsync<T>(this IEnumerable<T> source, int maxThreads, Func<T, System.Threading.Tasks.Task> body, bool wait)
         {
-            var partitions = System.Collections.Concurrent.Partitioner.Create(source).GetPartitions(maxThreads);
+            int sourceCount = source.Count();
+            var partitions = System.Collections.Concurrent.Partitioner.Create(source).GetPartitions(sourceCount < maxThreads ? sourceCount : maxThreads);
 
             IEnumerable<System.Threading.Tasks.Task> tasks = partitions.Select
                 (p =>
@@ -715,8 +717,17 @@ namespace System
                     )
                 );
 
-            if(wait)
-                System.Threading.Tasks.Task.WaitAll( tasks.ToArray() );
+            if (wait)
+            {
+                try
+                {
+                    System.Threading.Tasks.Task.WaitAll(tasks.ToArray());
+                }
+                catch (Exception ex)
+                {
+                    throw ex.InnerException;
+                }
+            }
         }
     }
 }
