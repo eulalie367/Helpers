@@ -127,42 +127,36 @@ namespace System
         /// </summary>
         public static Boolean? ToBool(this object obj)
         {
-            string str = obj.ToString();
-            if (!string.IsNullOrEmpty(str))
+            if (obj != null)
             {
-                switch (str.ToLower())
+                string str = obj.ToString();
+                if (!string.IsNullOrEmpty(str))
                 {
-                    case "on":
-                        return true;
-                        break;
-                    case "off":
-                        return false;
-                        break;
-                    case "yes":
-                        return true;
-                        break;
-                    case "no":
-                        return false;
-                        break;
-                    case "true":
-                        return true;
-                        break;
-                    case "false":
-                        return false;
-                        break;
-                    case "1":
-                        return true;
-                        break;
-                    case "0":
-                        return false;
-                        break;
-                    default:
-                        return null;
-                        break;
+                    switch (str.ToLower())
+                    {
+                        case "on":
+                            return true;
+                        case "off":
+                            return false;
+                        case "yes":
+                            return true;
+                        case "no":
+                            return false;
+                        case "true":
+                            return true;
+                        case "false":
+                            return false;
+                        case "1":
+                            return true;
+                        case "0":
+                            return false;
+                        default:
+                            return null;
+                    }
                 }
             }
-            else
-                return null;
+
+            return null;
         }
         /// <summary>
         /// This is a helper stub to fill a select in 1 line...
