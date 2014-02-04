@@ -149,8 +149,14 @@ namespace System
     public enum ApiStatusCode : long
     {
         BadRequest = 400,
+        Unauthorized = 401,
+        Forbidden = 403,
+        NotFound = 404,
+        Gone = 410,
         TooManyRequest = 429,
-        UnprocessableEntity = 422
+        UnprocessableEntity = 422,
+        InternalServerError = 500,
+        ServiceUnavailable = 503
     }
     public class ProtocolException : WebException
     {

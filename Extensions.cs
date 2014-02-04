@@ -272,7 +272,10 @@ namespace System
             if (s.Length >= length)
             {
                 s = s.Substring(0, length);
-                s = s.Substring(0, s.LastIndexOf(' '));
+                if (s.IndexOf(' ') > 0)
+                {
+                    s = s.Substring(0, s.LastIndexOf(' '));
+                }
                 if (!string.IsNullOrEmpty(trailingString))
                     s += trailingString;
             }
