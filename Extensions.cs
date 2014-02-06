@@ -695,34 +695,37 @@ namespace System
         public static void ForEachAsync<T>(this IEnumerable<T> source, int maxThreads, Func<T, System.Threading.Tasks.Task> body, bool wait)
         {
             int sourceCount = source.Count();
-            var partitions = System.Collections.Concurrent.Partitioner.Create(source).GetPartitions(sourceCount < maxThreads ? sourceCount : maxThreads);
+            if (sourceCount > 0)
+            {
+                var partitions = System.Collections.Concurrent.Partitioner.Create(source).GetPartitions(sourceCount < maxThreads ? sourceCount : maxThreads);
 
-            IEnumerable<System.Threading.Tasks.Task> tasks = partitions.Select
-                (p =>
-                    System.Threading.Tasks.Task.Run
-                    (
-                        async delegate
-                        {
-                            using (p)
+                IEnumerable<System.Threading.Tasks.Task> tasks = partitions.Select
+                    (p =>
+                        System.Threading.Tasks.Task.Run
+                        (
+                            async delegate
                             {
-                                while (p.MoveNext())
+                                using (p)
                                 {
-                                    await body(p.Current);
+                                    while (p.MoveNext())
+                                    {
+                                        await body(p.Current);
+                                    }
                                 }
                             }
-                        }
-                    )
-                );
+                        )
+                    );
 
-            if (wait)
-            {
-                try
+                if (wait)
                 {
-                    System.Threading.Tasks.Task.WaitAll(tasks.ToArray());
-                }
-                catch (Exception ex)
-                {
-                    throw ex.InnerException;
+                    try
+                    {
+                        System.Threading.Tasks.Task.WaitAll(tasks.ToArray());
+                    }
+                    catch (Exception ex)
+                    {
+                        throw ex.InnerException;
+                    }
                 }
             }
         }
