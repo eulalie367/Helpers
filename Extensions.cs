@@ -729,5 +729,47 @@ namespace System
                 }
             }
         }
+        public static void ForEachAsync(this int itterations, Func<int, System.Threading.Tasks.Task> body)
+        {
+            itterations.ForEachAsync(32, body, true);
+        }
+        public static void ForEachAsync(this int itterations, int maxThreads, Func<int, System.Threading.Tasks.Task> body)
+        {
+            itterations.ForEachAsync(maxThreads, body, true);
+        }
+        public static void ForEachAsync(this int itterations, int maxThreads, Func<int, System.Threading.Tasks.Task> body, bool wait)
+        {
+
+            var partitions = System.Collections.Concurrent.Partitioner.Create(new int[itterations]).GetPartitions(itterations < maxThreads ? itterations : maxThreads);
+
+            IEnumerable<System.Threading.Tasks.Task> tasks = partitions.Select
+                (p =>
+                    System.Threading.Tasks.Task.Run
+                    (
+                        async delegate
+                        {
+                            using (p)
+                            {
+                                while (p.MoveNext())
+                                {
+                                    await body(p.Current);
+                                }
+                            }
+                        }
+                    )
+                );
+
+            if (wait)
+            {
+                try
+                {
+                    System.Threading.Tasks.Task.WaitAll(tasks.ToArray());
+                }
+                catch (Exception ex)
+                {
+                    throw ex.InnerException;
+                }
+            }
+        }
     }
 }
