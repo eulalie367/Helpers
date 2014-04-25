@@ -739,8 +739,12 @@ namespace System
         }
         public static void ForEachAsync(this int itterations, int maxThreads, Func<int, System.Threading.Tasks.Task> body, bool wait)
         {
-
-            var partitions = System.Collections.Concurrent.Partitioner.Create(new int[itterations]).GetPartitions(itterations < maxThreads ? itterations : maxThreads);
+            int[] it = new int[itterations];
+            for (int i = 0; i < itterations; i++)
+            {
+                it[i] = i;
+            }
+            var partitions = System.Collections.Concurrent.Partitioner.Create(it).GetPartitions(itterations < maxThreads ? itterations : maxThreads);
 
             IEnumerable<System.Threading.Tasks.Task> tasks = partitions.Select
                 (p =>
