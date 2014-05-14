@@ -269,7 +269,7 @@ namespace System
 
         public static string TruncateWholeString(this string s, int length, string trailingString)
         {
-            if (s.Length >= length)
+            if (!string.IsNullOrEmpty(s) && s.Length >= length)
             {
                 s = s.Substring(0, length);
                 if (s.IndexOf(' ') > 0)
