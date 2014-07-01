@@ -94,6 +94,17 @@ namespace System
             { }
             return retVal;
         }
+        public static Uri ToUri(this string str)
+        {
+            Uri retVal = null;
+            try
+            {
+                retVal = new Uri(str);
+            }
+            catch
+            { }
+            return retVal;
+        }
         public static int RoundUp(this double d)
         {
             int retval = (int)d;
@@ -450,9 +461,24 @@ namespace System
             return System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(s));
         }
 
-        public static string GetRequestHeader(this Uri address)
+        public static Dictionary<string, string> GetRequestHeader(this Uri address)
         {
-            return GetWebRequest(address, "HEAD");
+            Dictionary<string, string> retVal = new Dictionary<string, string>();
+            System.Net.WebRequest request = System.Net.WebRequest.Create(address);
+
+            request.Method = "HEAD";
+
+            using (WebResponse response = request.GetResponse())
+            {
+                foreach (string key in response.Headers.AllKeys)
+                {
+                    var h = response.Headers[key];
+                    retVal.Add(key, h);
+                }
+            }
+
+
+            return retVal;
         }
         public static string GetWebRequest(this Uri address, string method)
         {
