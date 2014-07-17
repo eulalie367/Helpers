@@ -299,9 +299,17 @@ namespace System
 
         public static string RemoveQuerystringParam(this Uri u, string key)
         {
-            if (!string.IsNullOrEmpty(u.Query))
+            if (u != null && !string.IsNullOrEmpty(u.Query))
             {
-                string baseQstring = u.Query.Replace('?', '&');
+                return RemoveQuerystringParam(u.Query, key);
+            }
+            return "";
+        }
+        public static string RemoveQuerystringParam(this string u, string key)
+        {
+            if (!string.IsNullOrEmpty(u))
+            {
+                string baseQstring = u.Replace('?', '&');
                 System.Text.RegularExpressions.Regex r = new System.Text.RegularExpressions.Regex("&" + key + "=[^&]+");
                 baseQstring = r.Replace(baseQstring, "");
                 if (!string.IsNullOrEmpty(baseQstring))
@@ -311,6 +319,14 @@ namespace System
             return "?";
         }
         public static string AppendQuerystringParam(this Uri u, string key, string value)
+        {
+            if (u != null)
+            {
+                return AppendQuerystringParam(u.Query, key, value);
+            }
+            return "";
+        }
+        public static string AppendQuerystringParam(this string u, string key, string value)
         {
             string baseQuery = u.RemoveQuerystringParam(key);
             return string.Format("{0}{1}{2}={3}", baseQuery, (baseQuery == "?" ? "" : "&"), key, value);
