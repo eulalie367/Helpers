@@ -33,12 +33,16 @@ namespace System.Data
         }
         public static object ExecuteScalar(string sql, SqlParameter[] Params, CommandType commandType)
         {
+            return SqlHelper.ExecuteScalar(sql, Params, commandType, SqlHelper.ConnString);
+        }
+        public static object ExecuteScalar(string sql, SqlParameter[] Params, CommandType commandType, string connString)
+        {
             object retVal = null;
             try
             {
                 lock (lockExecuteScalar)
                 {
-                    using (SqlConnection conn = new SqlConnection(ConnString))
+                    using (SqlConnection conn = new SqlConnection(connString))
                     {
                         using (SqlCommand com = new SqlCommand(sql, conn))
                         {
