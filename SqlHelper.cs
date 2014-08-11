@@ -223,7 +223,7 @@ namespace System.Data
         }
         public static t FillEntity<t>(string sql, SqlParameter[] Params, CommandType commandType) where t : new()
         {
-            return FillEntity<t>(sql, null, commandType, ConnString);
+            return FillEntity<t>(sql, Params, commandType, ConnString);
         }
         public static t FillEntity<t>(string sql, SqlParameter[] Params, CommandType commandType, string connString) where t : new()
         {
