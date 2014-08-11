@@ -63,19 +63,24 @@ namespace System.Data
             catch (SqlException e)
             {
                 StringBuilder sb = new StringBuilder(sql);
-                foreach (var p in Params)
+                if (Params != null && Params.Length > 0)
                 {
-                    sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
+                    foreach (var p in Params)
+                    {
+                        sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
+                    }
                 }
 
 
                 Logger.Warn(e, sb.ToString());
+
+                throw;
             }
 
             return retVal;
         }
 
-        private static readonly object lockExecuteNonQuery = new object();
+        //private static readonly object lockExecuteNonQuery = new object();
         public static int ExecuteNonQuery(string sql)
         {
             return ExecuteNonQuery(sql, null, CommandType.Text);
@@ -89,67 +94,51 @@ namespace System.Data
             int retVal = 0;
             try
             {
-                lock (lockExecuteNonQuery)
+                //lock (lockExecuteNonQuery)
+                //{
+                using (SqlConnection conn = new SqlConnection(connString))
                 {
-                    using (SqlConnection conn = new SqlConnection(connString))
+                    using (SqlCommand com = new SqlCommand(sql, conn))
                     {
-                        using (SqlCommand com = new SqlCommand(sql, conn))
-                        {
-                            com.CommandTimeout = int.MaxValue;
-                            com.CommandType = commandType;
-                            if (Params != null && Params.Length > 0)
-                                com.Parameters.AddRange(Params);
+                        com.CommandTimeout = int.MaxValue;
+                        com.CommandType = commandType;
+                        if (Params != null && Params.Length > 0)
+                            com.Parameters.AddRange(Params);
 
-                            conn.Open();
+                        conn.Open();
 
-                            retVal = com.ExecuteNonQuery();
+                        retVal = com.ExecuteNonQuery();
 
-                            conn.Close();
-                        }
+                        conn.Close();
                     }
                 }
+                //}
             }
             catch (SqlException e)
             {
-                //StringBuilder sb = new StringBuilder(sql);
-                //foreach (var p in Params)
-                //{
-                //    sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
-                //}
+                StringBuilder sb = new StringBuilder(sql);
+                if (Params != null && Params.Length > 0)
+                {
+                    foreach (var p in Params)
+                    {
+                        sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
+                    }
+                }
 
 
-                //Logger.Warn(e, sb.ToString());
-                //throw new Exception(sb.ToString(),e);
+                Logger.Warn(e, sb.ToString());
+
+                throw;
             }
 
             return retVal;
         }
 
-        private static readonly object lockFillEntities = new object();
-        /// <summary>
-        /// This will give all results the correct type
-        /// You will need to make sure that the properties in the class you pass are named the same as the dbcolumn
-        /// I would suggest using a tool like sqlmetal to generate your classes.
-        /// </summary>
-        /// <typeparam name="t"></typeparam>
-        /// <param name="sql"></param>
-        /// <param name="Params"></param>
-        /// <param name="commandType"></param>
-        /// <returns></returns>
+        //private static readonly object lockFillEntities = new object();
         public static List<t> FillEntities<t>(string sql) where t : new()
         {
             return FillEntities<t>(sql, null, CommandType.Text);
         }
-        /// <summary>
-        /// This will give all results the correct type
-        /// You will need to make sure that the properties in the class you pass are named the same as the dbcolumn
-        /// I would suggest using a tool like sqlmetal to generate your classes.
-        /// </summary>
-        /// <typeparam name="t"></typeparam>
-        /// <param name="sql"></param>
-        /// <param name="Params"></param>
-        /// <param name="commandType"></param>
-        /// <returns></returns>
         public static List<t> FillEntities<t>(string sql, SqlParameter[] Params, CommandType commandType) where t : new()
         {
             return FillEntities<t>(sql, Params, commandType, SqlHelper.ConnString);
@@ -160,55 +149,66 @@ namespace System.Data
             t tmp = default(t);
             try
             {
-                lock (lockFillEntities)
+                //lock (lockFillEntities)
+                //{
+
+                using (SqlConnection conn = new SqlConnection(connString))
                 {
-
-                    using (SqlConnection conn = new SqlConnection(connString))
+                    using (SqlCommand com = new SqlCommand(sql, conn))
                     {
-                        using (SqlCommand com = new SqlCommand(sql, conn))
+                        com.CommandType = commandType;
+                        if (Params != null && Params.Length > 0)
+                            com.Parameters.AddRange(Params);
+
+                        conn.Open();
+
+
+                        using (SqlDataReader reader = com.ExecuteReader())
                         {
-                            com.CommandType = commandType;
-                            if (Params != null && Params.Length > 0)
-                                com.Parameters.AddRange(Params);
-
-                            conn.Open();
-
-
-                            using (SqlDataReader reader = com.ExecuteReader())
+                            string colName = "";
+                            object value = null;
+                            Type type = typeof(t);
+                            PropertyInfo prop = null;
+                            while (reader.Read())
                             {
-                                string colName = "";
-                                object value = null;
-                                Type type = typeof(t);
-                                PropertyInfo prop = null;
-                                while (reader.Read())
+                                tmp = new t();
+                                for (int i = 0; i < reader.FieldCount; i++)
                                 {
-                                    tmp = new t();
-                                    for (int i = 0; i < reader.FieldCount; i++)
-                                    {
-                                        colName = reader.GetName(i);
-                                        colName = colName.Replace(" ", ""); //spaces don't work in names, SqlMetal will just remove them... So will we.
-                                        value = reader[i];
+                                    colName = reader.GetName(i);
+                                    colName = colName.Replace(" ", ""); //spaces don't work in names, SqlMetal will just remove them... So will we.
+                                    value = reader[i];
 
-                                        if (string.IsNullOrEmpty(colName))
-                                            prop = type.GetProperties()[i];
-                                        else
-                                            prop = type.GetProperty(colName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+                                    if (string.IsNullOrEmpty(colName))
+                                        prop = type.GetProperties()[i];
+                                    else
+                                        prop = type.GetProperty(colName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
 
 
-                                        SetPropetyValue(tmp, value, prop);
-                                    }
-                                    retVal.Add(tmp);
+                                    SetPropetyValue(tmp, value, prop);
                                 }
-                                reader.Close();
+                                retVal.Add(tmp);
                             }
-                            conn.Close();
+                            reader.Close();
                         }
+                        conn.Close();
                     }
                 }
+                //}
             }
             catch (SqlException e)
             {
-                Logger.Warn(e);
+                StringBuilder sb = new StringBuilder(sql);
+                if (Params != null && Params.Length > 0)
+                {
+                    foreach (var p in Params)
+                    {
+                        sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
+                    }
+                }
+
+
+                Logger.Warn(e, sb.ToString());
+
                 throw;
             }
 
@@ -216,85 +216,74 @@ namespace System.Data
             return retVal;
         }
 
-        private static readonly object lockFillEntity = new object();
-        /// <summary>
-        /// This will give all results the correct type
-        /// You will need to make sure that the properties in the class you pass are named the same as the dbcolumn
-        /// I would suggest using a tool like sqlmetal to generate your classes.
-        /// </summary>
-        /// <typeparam name="t"></typeparam>
-        /// <param name="sql"></param>
-        /// <param name="Params"></param>
-        /// <param name="commandType"></param>
-        /// <returns></returns>
+        //private static readonly object lockFillEntity = new object();
         public static t FillEntity<t>(string sql) where t : new()
         {
-            return FillEntity<t>(sql, null, CommandType.Text);
+            return FillEntity<t>(sql, null, CommandType.Text, ConnString);
         }
-        /// <summary>
-        /// This will give all results the correct type
-        /// You will need to make sure that the properties in the class you pass are named the same as the dbcolumn
-        /// I would suggest using a tool like sqlmetal to generate your classes.
-        /// </summary>
-        /// <typeparam name="t"></typeparam>
-        /// <param name="sql"></param>
-        /// <param name="Params"></param>
-        /// <param name="commandType"></param>
-        /// <returns></returns>
         public static t FillEntity<t>(string sql, SqlParameter[] Params, CommandType commandType) where t : new()
+        {
+            return FillEntity<t>(sql, null, commandType, ConnString);
+        }
+        public static t FillEntity<t>(string sql, SqlParameter[] Params, CommandType commandType, string connString) where t : new()
         {
             t tmp = default(t);
             try
             {
-                lock (lockFillEntity)
+                //lock (lockFillEntity)
+                //{
+                using (SqlConnection conn = new SqlConnection(connString))
                 {
-                    using (SqlConnection conn = new SqlConnection(ConnString))
+                    using (SqlCommand com = new SqlCommand(sql, conn))
                     {
-                        using (SqlCommand com = new SqlCommand(sql, conn))
+                        com.CommandType = commandType;
+                        if (Params != null && Params.Length > 0)
+                            com.Parameters.AddRange(Params);
+
+                        conn.Open();
+
+                        using (SqlDataReader reader = com.ExecuteReader())
                         {
-                            com.CommandType = commandType;
-                            if (Params != null && Params.Length > 0)
-                                com.Parameters.AddRange(Params);
+                            string colName = "";
+                            object value = null;
+                            Type type = typeof(t);
+                            PropertyInfo prop = null;
 
-                            conn.Open();
-
-                            using (SqlDataReader reader = com.ExecuteReader())
+                            if (reader.Read())
                             {
-                                string colName = "";
-                                object value = null;
-                                Type type = typeof(t);
-                                PropertyInfo prop = null;
-
-                                if (reader.Read())
+                                tmp = new t();
+                                for (int i = 0; i < reader.FieldCount; i++)
                                 {
-                                    tmp = new t();
-                                    for (int i = 0; i < reader.FieldCount; i++)
-                                    {
-                                        colName = reader.GetName(i);
-                                        value = reader[i];
+                                    colName = reader.GetName(i);
+                                    value = reader[i];
 
-                                        prop = type.GetProperty(colName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+                                    prop = type.GetProperty(colName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
 
-                                        SetPropetyValue(tmp, value, prop);
-                                    }
+                                    SetPropetyValue(tmp, value, prop);
                                 }
-                                reader.Close();
                             }
-                            conn.Close();
+                            reader.Close();
                         }
+                        conn.Close();
                     }
                 }
+                //}
             }
             catch (SqlException e)
             {
                 StringBuilder sb = new StringBuilder(sql);
-                foreach (var p in Params)
+                if (Params != null && Params.Length > 0)
                 {
-                    sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
+                    foreach (var p in Params)
+                    {
+                        sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
+                    }
                 }
 
 
                 Logger.Warn(e, sb.ToString());
+
+                throw;
             }
 
 
@@ -303,10 +292,9 @@ namespace System.Data
 
         public static void BulkInsert(DataTable dt, string tableName)
         {
-            BulkInsert(dt,tableName, SqlHelper.ConnString);
+            BulkInsert(dt, tableName, SqlHelper.ConnString);
         }
         public static void BulkInsert(DataTable dt, string tableName, string connString)
-
         {
             try
             {
@@ -330,6 +318,7 @@ namespace System.Data
             catch (Exception ex)
             {
                 Logger.Warn(ex);
+                throw;
             }
         }
 
