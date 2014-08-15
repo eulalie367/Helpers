@@ -37,6 +37,10 @@ namespace System.Data
         }
         public static object ExecuteScalar(string sql, SqlParameter[] Params, CommandType commandType, string connString)
         {
+            return ExecuteScalar(sql, Params, commandType, connString, 0);
+        }
+        private static object ExecuteScalar(string sql, SqlParameter[] Params, CommandType commandType, string connString, int tries)
+        {
             object retVal = null;
             try
             {
@@ -59,28 +63,42 @@ namespace System.Data
                         }
                     }
                 }
+                if (tries > 0)
+                    Logger.Log("Successfull updated {0} after {1} trie(s)", sql, tries + 1);
             }
             catch (SqlException e)
             {
-                StringBuilder sb = new StringBuilder(sql);
-                if (Params != null && Params.Length > 0)
+                if (tries < 1000 && e.Message.ToLower().Contains("deadlock"))
                 {
-                    foreach (var p in Params)
-                    {
-                        sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
-                    }
+                    System.Threading.Thread.SpinWait(1000 * tries * new Random().Next(1, 11));
+
+                    Logger.Log("Deadlock in proc {0}.  Trying Again, Tries:{1}", sql, tries + 1);
+
+                    SqlParameter[] ps = Params.Select(p => new SqlParameter(p.ParameterName, p.Value)).ToArray();//deepcopy
+
+                    return ExecuteScalar(sql, ps, commandType, connString, tries + 1);
                 }
+                else
+                {
+                    StringBuilder sb = new StringBuilder(sql);
+                    if (Params != null && Params.Length > 0)
+                    {
+                        foreach (var p in Params)
+                        {
+                            sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
+                        }
+                    }
+                    Logger.Warn(e, sb.ToString());
 
-
-                Logger.Warn(e, sb.ToString());
-
-                throw;
+                    throw;
+                }
             }
 
             return retVal;
         }
 
-        //private static readonly object lockExecuteNonQuery = new object();
+
+        private static readonly object lockExecuteNonQuery = new object();
         public static int ExecuteNonQuery(string sql)
         {
             return ExecuteNonQuery(sql, null, CommandType.Text);
@@ -91,28 +109,34 @@ namespace System.Data
         }
         public static int ExecuteNonQuery(string sql, SqlParameter[] Params, CommandType commandType, string connString)
         {
+            return ExecuteNonQuery(sql, Params, commandType, connString, 0);
+        }
+        private static int ExecuteNonQuery(string sql, SqlParameter[] Params, CommandType commandType, string connString, int tries)
+        {
             int retVal = 0;
             try
             {
-                //lock (lockExecuteNonQuery)
-                //{
-                using (SqlConnection conn = new SqlConnection(connString))
+                lock (lockExecuteNonQuery)
                 {
-                    using (SqlCommand com = new SqlCommand(sql, conn))
+                    using (SqlConnection conn = new SqlConnection(connString))
                     {
-                        com.CommandTimeout = int.MaxValue;
-                        com.CommandType = commandType;
-                        if (Params != null && Params.Length > 0)
-                            com.Parameters.AddRange(Params);
+                        using (SqlCommand com = new SqlCommand(sql, conn))
+                        {
+                            com.CommandTimeout = int.MaxValue;
+                            com.CommandType = commandType;
+                            if (Params != null && Params.Length > 0)
+                                com.Parameters.AddRange(Params);
 
-                        conn.Open();
+                            conn.Open();
 
-                        retVal = com.ExecuteNonQuery();
+                            retVal = com.ExecuteNonQuery();
 
-                        conn.Close();
+                            conn.Close();
+                        }
                     }
                 }
-                //}
+                if (tries > 0)
+                    Logger.Log("Successfull updated {0} after {1} trie(s)", sql, tries + 1);
             }
             catch (SqlException e)
             {
@@ -124,17 +148,29 @@ namespace System.Data
                         sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
                     }
                 }
-
-
                 Logger.Warn(e, sb.ToString());
+                if (tries < 1000 && e.Message.ToLower().Contains("deadlock"))
+                {
+                    System.Threading.Thread.SpinWait(1000 * tries * new Random().Next(1, 11));
 
-                throw;
+                    Logger.Log("Deadlock in proc {0} \n{2}.  Trying Again, Tries:{1}", sql, tries + 1, sb.ToString());
+
+                    SqlParameter[] ps = Params.Select(p => new SqlParameter(p.ParameterName, p.Value)).ToArray();//deepcopy
+
+                    return ExecuteNonQuery(sql, ps, commandType, connString, tries + 1);
+                }
+                else
+                {
+                    Logger.Warn(e, sb.ToString());
+
+                    throw;
+                }
             }
 
             return retVal;
         }
 
-        //private static readonly object lockFillEntities = new object();
+        private static readonly object lockFillEntities = new object();
         public static List<t> FillEntities<t>(string sql) where t : new()
         {
             return FillEntities<t>(sql, null, CommandType.Text);
@@ -145,78 +181,95 @@ namespace System.Data
         }
         public static List<t> FillEntities<t>(string sql, SqlParameter[] Params, CommandType commandType, string connString) where t : new()
         {
+            return FillEntities<t>(sql, Params, commandType, connString, 0);
+        }
+        private static List<t> FillEntities<t>(string sql, SqlParameter[] Params, CommandType commandType, string connString, int tries) where t : new()
+        {
             List<t> retVal = new List<t>();
             t tmp = default(t);
             try
             {
-                //lock (lockFillEntities)
-                //{
-
-                using (SqlConnection conn = new SqlConnection(connString))
+                lock (lockFillEntities)
                 {
-                    using (SqlCommand com = new SqlCommand(sql, conn))
+
+                    using (SqlConnection conn = new SqlConnection(connString))
                     {
-                        com.CommandType = commandType;
-                        if (Params != null && Params.Length > 0)
-                            com.Parameters.AddRange(Params);
-
-                        conn.Open();
-
-
-                        using (SqlDataReader reader = com.ExecuteReader())
+                        using (SqlCommand com = new SqlCommand(sql, conn))
                         {
-                            string colName = "";
-                            object value = null;
-                            Type type = typeof(t);
-                            PropertyInfo prop = null;
-                            while (reader.Read())
+                            com.CommandType = commandType;
+                            if (Params != null && Params.Length > 0)
+                                com.Parameters.AddRange(Params);
+
+                            conn.Open();
+
+
+                            using (SqlDataReader reader = com.ExecuteReader())
                             {
-                                tmp = new t();
-                                for (int i = 0; i < reader.FieldCount; i++)
+                                string colName = "";
+                                object value = null;
+                                Type type = typeof(t);
+                                PropertyInfo prop = null;
+                                while (reader.Read())
                                 {
-                                    colName = reader.GetName(i);
-                                    colName = colName.Replace(" ", ""); //spaces don't work in names, SqlMetal will just remove them... So will we.
-                                    value = reader[i];
+                                    tmp = new t();
+                                    for (int i = 0; i < reader.FieldCount; i++)
+                                    {
+                                        colName = reader.GetName(i);
+                                        colName = colName.Replace(" ", ""); //spaces don't work in names, SqlMetal will just remove them... So will we.
+                                        value = reader[i];
 
-                                    if (string.IsNullOrEmpty(colName))
-                                        prop = type.GetProperties()[i];
-                                    else
-                                        prop = type.GetProperty(colName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+                                        if (string.IsNullOrEmpty(colName))
+                                            prop = type.GetProperties()[i];
+                                        else
+                                            prop = type.GetProperty(colName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
 
 
-                                    SetPropetyValue(tmp, value, prop);
+                                        SetPropetyValue(tmp, value, prop);
+                                    }
+                                    retVal.Add(tmp);
                                 }
-                                retVal.Add(tmp);
+                                reader.Close();
                             }
-                            reader.Close();
+                            conn.Close();
                         }
-                        conn.Close();
                     }
                 }
-                //}
+                if (tries > 0)
+                    Logger.Log("Successfull updated {0} after {1} trie(s)", sql, tries + 1);
             }
             catch (SqlException e)
             {
-                StringBuilder sb = new StringBuilder(sql);
-                if (Params != null && Params.Length > 0)
+                if (tries < 1000 && e.Message.ToLower().Contains("deadlock"))
                 {
-                    foreach (var p in Params)
-                    {
-                        sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
-                    }
+                    System.Threading.Thread.SpinWait(1000 * tries * new Random().Next(1, 11));
+
+                    Logger.Log("Deadlock in proc {0}.  Trying Again, Tries:{1}", sql, tries + 1);
+
+                    SqlParameter[] ps = Params.Select(p => new SqlParameter(p.ParameterName, p.Value)).ToArray();//deepcopy
+
+                    return FillEntities<t>(sql, ps, commandType, connString, tries + 1);
                 }
+                else
+                {
+                    StringBuilder sb = new StringBuilder(sql);
+                    if (Params != null && Params.Length > 0)
+                    {
+                        foreach (var p in Params)
+                        {
+                            sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
+                        }
+                    }
+                    Logger.Warn(e, sb.ToString());
 
-
-                Logger.Warn(e, sb.ToString());
-
-                throw;
+                    throw;
+                }
             }
 
 
             return retVal;
         }
 
-        //private static readonly object lockFillEntity = new object();
+        private static readonly object lockFillEntity = new object();
         public static t FillEntity<t>(string sql) where t : new()
         {
             return FillEntity<t>(sql, null, CommandType.Text, ConnString);
@@ -227,65 +280,83 @@ namespace System.Data
         }
         public static t FillEntity<t>(string sql, SqlParameter[] Params, CommandType commandType, string connString) where t : new()
         {
+            return FillEntity<t>(sql, Params, commandType, connString, 0);
+        }
+        private static t FillEntity<t>(string sql, SqlParameter[] Params, CommandType commandType, string connString, int tries) where t : new()
+        {
             t tmp = default(t);
             try
             {
-                //lock (lockFillEntity)
-                //{
-                using (SqlConnection conn = new SqlConnection(connString))
+                lock (lockFillEntity)
                 {
-                    using (SqlCommand com = new SqlCommand(sql, conn))
+                    using (SqlConnection conn = new SqlConnection(connString))
                     {
-                        com.CommandType = commandType;
-                        if (Params != null && Params.Length > 0)
-                            com.Parameters.AddRange(Params);
-
-                        conn.Open();
-
-                        using (SqlDataReader reader = com.ExecuteReader())
+                        using (SqlCommand com = new SqlCommand(sql, conn))
                         {
-                            string colName = "";
-                            object value = null;
-                            Type type = typeof(t);
-                            PropertyInfo prop = null;
+                            com.CommandType = commandType;
+                            if (Params != null && Params.Length > 0)
+                                com.Parameters.AddRange(Params);
 
-                            if (reader.Read())
+                            conn.Open();
+
+                            using (SqlDataReader reader = com.ExecuteReader())
                             {
-                                tmp = new t();
-                                for (int i = 0; i < reader.FieldCount; i++)
+                                string colName = "";
+                                object value = null;
+                                Type type = typeof(t);
+                                PropertyInfo prop = null;
+
+                                if (reader.Read())
                                 {
-                                    colName = reader.GetName(i);
-                                    value = reader[i];
+                                    tmp = new t();
+                                    for (int i = 0; i < reader.FieldCount; i++)
+                                    {
+                                        colName = reader.GetName(i);
+                                        value = reader[i];
 
-                                    prop = type.GetProperty(colName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+                                        prop = type.GetProperty(colName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
 
-                                    SetPropetyValue(tmp, value, prop);
+                                        SetPropetyValue(tmp, value, prop);
+                                    }
                                 }
+                                reader.Close();
                             }
-                            reader.Close();
+                            conn.Close();
                         }
-                        conn.Close();
                     }
+                    if (tries > 0)
+                        Logger.Log("Successfull updated {0} after {1} trie(s)", sql, tries + 1);
+
                 }
-                //}
             }
             catch (SqlException e)
             {
-                StringBuilder sb = new StringBuilder(sql);
-                if (Params != null && Params.Length > 0)
+                if (tries < 1000 && e.Message.ToLower().Contains("deadlock"))
                 {
-                    foreach (var p in Params)
-                    {
-                        sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
-                    }
+                    System.Threading.Thread.SpinWait(1000 * tries * new Random().Next(1, 11));
+
+
+                    Logger.Log("Deadlock in proc {0}.  Trying Again, Tries:{1}", sql, tries + 1);
+
+                    SqlParameter[] ps = Params.Select(p => new SqlParameter(p.ParameterName, p.Value)).ToArray();//deepcopy
+
+                    return FillEntity<t>(sql, ps, commandType, connString, tries + 1);
                 }
+                else
+                {
+                    StringBuilder sb = new StringBuilder(sql);
+                    if (Params != null && Params.Length > 0)
+                    {
+                        foreach (var p in Params)
+                        {
+                            sb.AppendFormat("\n{0} = {1},", p.ParameterName, p.Value);
+                        }
+                    }
+                    Logger.Warn(e, sb.ToString());
 
-
-                Logger.Warn(e, sb.ToString());
-
-                throw;
+                    throw;
+                }
             }
-
 
             return tmp;
         }
