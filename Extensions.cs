@@ -805,16 +805,9 @@ namespace System
                     )
                 );
 
-            if (wait)
+            if (wait && tasks != null && tasks.Count() > 0)
             {
-                try
-                {
-                    System.Threading.Tasks.Task.WaitAll(tasks.ToArray());
-                }
-                catch (Exception ex)
-                {
-                    throw ex.InnerException;
-                }
+                System.Threading.Tasks.Task.WaitAll(tasks.ToArray());
             }
         }
     }
