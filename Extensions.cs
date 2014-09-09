@@ -522,7 +522,7 @@ namespace System
         public static Guid GetHashCode128(this string s)
         {
             System.Security.Cryptography.MD5 c = System.Security.Cryptography.MD5.Create();
-            s = s.NormalizeURL();
+            //s = s.NormalizeURL();
             s = s.ToLower();
             byte[] b = c.ComputeHash(Encoding.UTF8.GetBytes(s));
             int z = System.Net.IPAddress.HostToNetworkOrder(BitConverter.ToInt32(b, 0));
@@ -559,7 +559,8 @@ namespace System
                 .Replace("$", "%24")
                 .Replace("!", "%21")
                 .Replace("*", "%2A")
-                .Replace("'", "%27");
+                .Replace("'", "%27")
+                .Replace("%22", "%27");
 
             // these characters are escaped by UrlEncode() but will fail if unescaped!
             value = value.Replace("%7E", "~");
@@ -594,6 +595,32 @@ namespace System
             return value;
         }
 
+        public static string URLEncode(this string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return string.Empty;
+            }
+
+            value = Uri.EscapeDataString(value);
+
+            // UrlEncode escapes with lowercase characters (e.g. %2f) but oAuth needs %2F
+            value = System.Text.RegularExpressions.Regex.Replace(value, "(%[0-9a-f][0-9a-f])", c => c.Value.ToUpper());
+
+            // these characters are not escaped by UrlEncode() but needed to be escaped
+            value = value
+                .Replace("(", "%28")
+                .Replace(")", "%29")
+                .Replace("$", "%24")
+                .Replace("!", "%21")
+                .Replace("*", "%2A")
+                .Replace("'", "%27");
+
+            // these characters are escaped by UrlEncode() but will fail if unescaped!
+            value = value.Replace("%7E", "~");
+
+            return value;
+        }
         public static string RenderControl(this System.Web.UI.UserControl c)
         {
             StringBuilder sb = new StringBuilder();
