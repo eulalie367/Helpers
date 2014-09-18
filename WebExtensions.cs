@@ -10,17 +10,21 @@ namespace System
     {
         public static string GetResponseString(this HttpWebRequest req)
         {
-            return req.GetResponseString(null, null, null, null, null);
+            return req.GetResponseString(null, null, null, null, null, null);
         }
         public static string GetResponseString(this HttpWebRequest req, string pData)
         {
-            return req.GetResponseString(pData, null, null, null, null);
+            return req.GetResponseString(pData, null, null, null, null, null);
+        }
+        public static string GetResponseString(this HttpWebRequest req, string pData, string signingKey)
+        {
+            return req.GetResponseString(pData, null, null, null, null, signingKey);
         }
         public static string GetResponseString(this HttpWebRequest req, string ConsumerKey, string ConsumerSecret, string AccessToken, string AccessTokenSecret)
         {
-            return req.GetResponseString(null, ConsumerKey, ConsumerSecret, AccessToken, AccessTokenSecret);
+            return req.GetResponseString(null, ConsumerKey, ConsumerSecret, AccessToken, AccessTokenSecret, null);
         }
-        public static string GetResponseString(this HttpWebRequest req, string pData, string ConsumerKey, string ConsumerSecret, string AccessToken, string AccessTokenSecret)
+        public static string GetResponseString(this HttpWebRequest req, string pData, string ConsumerKey, string ConsumerSecret, string AccessToken, string AccessTokenSecret, string signingKey)
         {
             if (req != null)
             {
@@ -41,6 +45,10 @@ namespace System
                 if (!string.IsNullOrEmpty(ConsumerKey) && !string.IsNullOrEmpty(ConsumerSecret))
                 {
                     req.AddOAuth(pData, ConsumerKey, ConsumerSecret, AccessToken, AccessTokenSecret);
+                }
+                if (!string.IsNullOrEmpty(signingKey))
+                {
+                    req.SignRequest(pData, signingKey);
                 }
 
                 try
@@ -63,10 +71,10 @@ namespace System
                         HttpWebResponse r = ex.Response as HttpWebResponse;
                         if (r != null)
                         {
-                            throw new ProtocolException((ApiStatusCode) r.StatusCode, ex.Message);
+                            throw new ProtocolException((ApiStatusCode)r.StatusCode, ex.Message);
                         }
                     }
-                    throw ex;
+                    throw;
                 }
             }
             return "";
@@ -144,6 +152,83 @@ namespace System
 
             return req;
         }
+        public static HttpWebRequest SignRequest(this HttpWebRequest req, string pData, string singingKey)
+        {
+            string nonce = new Random().Next(Int16.MaxValue, Int32.MaxValue).ToString("X", System.Globalization.CultureInfo.InvariantCulture);
+            string timeStamp = DateTime.UtcNow.ToUnixTimeStamp().ToString();
+
+            // Create the base string. This is the string that will be hashed for the signature.
+            Dictionary<string, string> param = new Dictionary<string, string>();
+            param.Add("oauth_nonce", nonce);
+            param.Add("oauth_signature_method", "HMAC-SHA512");
+            param.Add("oauth_timestamp", timeStamp);
+
+            pData += req.RequestUri.Query;
+
+            foreach (string kv in pData.Replace("?", "&").Split('&'))
+            {
+                string[] akv = kv.Split('=');
+                if (akv.Length == 2)
+                {
+                    param.Add(akv[0], akv[1].PercentDecode());
+                }
+            }
+
+            StringBuilder sParam = new StringBuilder(); ;
+            foreach (KeyValuePair<string, string> p in param.OrderBy(k => k.Key))
+            {
+                if (sParam.Length > 0)
+                    sParam.Append("&");
+
+                sParam.AppendFormat("{0}={1}", p.Key.PercentEncode(), p.Value.PercentEncode());
+            }
+
+            string url = req.RequestUri.AbsoluteUri;
+            if (!string.IsNullOrEmpty(req.RequestUri.Query))
+            {
+                url = url.Replace(req.RequestUri.Query, "");
+            }
+
+            string signatureBaseString
+                = string.Format("{0}&{1}&{2}",
+                req.Method.ToUpper(),
+                url.PercentEncode(),
+                sParam.ToString().PercentEncode()
+            );
+
+
+
+            // Generate the hash
+            System.Security.Cryptography.HMACSHA512 hmacsha512 = new System.Security.Cryptography.HMACSHA512(Encoding.UTF8.GetBytes(singingKey));
+            byte[] signatureBytes = hmacsha512.ComputeHash(Encoding.UTF8.GetBytes(signatureBaseString));
+
+            string signature = Convert.ToBase64String(signatureBytes).PercentEncode();
+
+
+            req.Headers.Add("oauth_nonce", nonce);
+            req.Headers.Add("oauth_signature_method", "HMAC-SHA512");
+            req.Headers.Add("oauth_timestamp", timeStamp);
+            req.Headers.Add("oauth_signature", signature);
+            req.ContentType = "application/x-www-form-urlencoded";
+
+            return req;
+        }
+
+        //public static bool CheckRequestSignature(this System.Web.HttpRequest req, string singingKey)
+        //{
+        //    int? nonce = req.Headers["oauth_nonce"].ToInt();
+        //    var signature_method = req.Headers["oauth_signature_method"];
+        //    var timestamp = req.Headers["oauth_timestamp"];
+        //    string signature = req.Headers["oauth_signature"];
+        //    signature = signature = signature.PercentDecode();
+
+        //    if (nonce.HasValue && StateManagement.Get<int?>(nonce.Value.ToString()).HasValue)
+        //        return false;
+
+        //    StateManagement.Add(nonce.Value.ToString(), nonce, 525600);
+
+        //    return true;
+        //}
 
     }
     public enum ApiStatusCode : long
