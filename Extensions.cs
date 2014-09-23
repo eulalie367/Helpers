@@ -518,6 +518,21 @@ namespace System
 
             return retVal;
         }
+        public static Uri GetFinalURL(this Uri address)
+        {
+            System.Net.WebRequest request = System.Net.WebRequest.Create(address);
+            request.Method = "HEAD";
+
+            Uri retVal = null;
+            using (WebResponse response = request.GetResponse())
+            {
+                using (System.IO.Stream s = response.GetResponseStream())
+                {
+                    retVal = response.ResponseUri;
+                }
+            }
+            return retVal;
+        }
 
         public static Guid GetHashCode128(this string s)
         {
