@@ -610,6 +610,53 @@ namespace System
             return value;
         }
 
+
+        public static string ToJSONString(this string value)
+        {
+            #region illegalChars
+
+            char[] illegalChars = new char[] 
+            { 
+                (char)1, 
+                (char)2, 
+                (char)3, 
+                (char)4, 
+                (char)5, 
+                (char)6, 
+                (char)7, 
+                (char)11, 
+                (char)14, 
+                (char)15, 
+                (char)16, 
+                (char)17, 
+                (char)18,
+                (char)19,
+                (char)20,
+                (char)21,
+                (char)22,
+                (char)23,
+                (char)24,
+                (char)25,
+                (char)26,
+                (char)27,
+                (char)28,
+                (char)29,
+                (char)30,
+                (char)31,
+                (char)8232,
+                (char)8233
+            };
+
+            #endregion
+
+            foreach (char c in illegalChars)
+            {
+                value = value.Replace(c, (char)0);
+            }
+            return value;
+        }
+
+
         public static string URLEncode(this string value)
         {
             if (string.IsNullOrEmpty(value))
