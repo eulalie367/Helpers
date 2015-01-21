@@ -161,19 +161,10 @@ namespace System.Data
 
         #endregion
 
-        public static bool Save<t>(string dbName, string collectionName, t data)
+        public static void Save<t>(string dbName, string collectionName, t data)
         {
-            try
-            {
-                var fe = System.Data.MongoHelper.DataBase(dbName).GetCollection<t>(collectionName);
-                fe.Save<t>(data);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                return false;
-            }
+            var fe = System.Data.MongoHelper.DataBase(dbName).GetCollection<t>(collectionName);
+            fe.Save<t>(data);
         }
-
     }
 }
