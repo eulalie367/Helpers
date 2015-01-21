@@ -25,7 +25,21 @@ namespace System.Data
                 return connString;
             }
         }
-
+        private static int _timeOut;
+        public static int TimeOut
+        {
+            set
+            {
+                _timeOut = value;
+            }
+            get
+            {
+                if(_timeOut == 0)
+                    _timeOut = ConfigurationManager.AppSettings["DBTimeOut"].ToInt() ?? 30;
+    
+                return _timeOut;
+            }
+        }
         private static readonly object lockExecuteScalar = new object();
         public static object ExecuteScalar(string sql)
         {
