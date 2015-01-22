@@ -539,6 +539,7 @@ namespace System
             System.Security.Cryptography.MD5 c = System.Security.Cryptography.MD5.Create();
             //s = s.NormalizeURL();
             s = s.ToLower();
+            s = Regex.Replace(s, "\\s", "");
             byte[] b = c.ComputeHash(Encoding.UTF8.GetBytes(s));
             int z = System.Net.IPAddress.HostToNetworkOrder(BitConverter.ToInt32(b, 0));
             short y = System.Net.IPAddress.HostToNetworkOrder(BitConverter.ToInt16(b, 4));
