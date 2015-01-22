@@ -73,6 +73,32 @@ namespace Spiral16.Utilities
             }
             return retVal;
         }
+
+        public static string Save(IEnumerable<iElasticSearchObject> results)
+        {
+            ElasticHelper retVal = new ElasticHelper();
+            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}/{1}/result/_bulk", ElasticURL, Collection));
+            req.ContentType = "application/json";
+            req.Method = "PUT";
+
+            StringBuilder sb = new StringBuilder();
+            foreach (iElasticSearchObject r in results)
+            {
+                sb.AppendLine(string.Format("{{ \"index\": {{\"_id\": \"{0}\"}}}}", r._id));
+                sb.AppendLine(Newtonsoft.Json.JsonConvert.SerializeObject(r));
+            }
+
+
+            string eh = req.GetResponseString(sb.ToString());
+            //if (eh != null)
+            //{
+            //    retVal = Newtonsoft.Json.JsonConvert.DeserializeObject<ElasticHelper>(eh);
+            //}
+            //return retVal;
+            return eh;
+        }
+
+        
         public static ElasticHelper Delete(string id)
         {
             ElasticHelper retVal = new ElasticHelper();
@@ -144,6 +170,11 @@ namespace Spiral16.Utilities
                 public float max_score { get; set; }
                 public List<object> hits { get; set; }
             }
+        }
+
+        public interface iElasticSearchObject
+        {
+            string _id { get; }
         }
     }
 }
