@@ -684,6 +684,12 @@ namespace System
 
             return value;
         }
+
+        public static string URLDecode(this string value)
+        {
+            return HttpUtility.HtmlDecode(HttpUtility.UrlDecode(value));
+        }
+
         public static string RenderControl(this System.Web.UI.UserControl c)
         {
             StringBuilder sb = new StringBuilder();
