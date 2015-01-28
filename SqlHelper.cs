@@ -442,11 +442,23 @@ namespace System.Data
                 {
                     prop.SetValue(tmp, new Uri(value.ToString()), null);
                 }
+                else if (IsNullableType(prop.PropertyType))
+                {
+
+                    var targetType = Nullable.GetUnderlyingType(prop.PropertyType);
+                    value = Convert.ChangeType(value, targetType); 
+                    prop.SetValue(tmp, value, null);
+                }
                 else
                 {
                     prop.SetValue(tmp, value, null);
                 }
             }
         }
+
+        private static bool IsNullableType(Type type)
+        {
+            return type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Nullable<>));
+        }    
     }
 }
