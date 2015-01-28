@@ -12,6 +12,7 @@ using System.Xml.Linq;
 using System.Web.UI;
 using System.Net;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace System
 {
@@ -867,6 +868,48 @@ namespace System
                 }
             }
         }
+        public static void ForEachAsync<T>(this IEnumerable<T> source, int maxThreads, Func<T, bool> body, bool wait)
+        {
+            int itterations = source.Count();
+
+            int pages = itterations > maxThreads ? itterations / maxThreads + 1 : 1;
+
+            T[] sa = source.ToArray();
+
+            for (int p = 1; p <= pages; p++)
+            {
+
+
+                int it = p == pages ? itterations == maxThreads ? itterations : pages * maxThreads - itterations : maxThreads;
+
+                Task[] tasks = new Task[it];
+                for (int i = 0; i < it; i++)
+                {
+                    int ia = i;
+                    tasks[i] = Task.Run
+                    (
+                        async () =>
+                        {
+                            int c = ia + (p - 1) * maxThreads;
+                            body(sa[c]);
+                        }
+                    );
+                }
+
+                if (wait)
+                {
+                    try
+                    {
+                        System.Threading.Tasks.Task.WaitAll(tasks);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw ex.InnerException;
+                    }
+                }
+            }
+        }
+
         public static void ForEachAsync(this int itterations, Func<int, System.Threading.Tasks.Task> body)
         {
             itterations.ForEachAsync(32, body, true);
@@ -905,6 +948,42 @@ namespace System
             {
                 System.Threading.Tasks.Task.WaitAll(tasks.ToArray());
             }
+        }
+        public static void ForEachAsync(this int itterations, int maxThreads, Func<int, bool> body, bool wait)
+        {
+            int pages = itterations > maxThreads ? itterations / maxThreads + 1 : 1;
+
+            for (int p = 1; p <= pages; p++)
+            {
+
+
+                int it = p == pages ? itterations <= maxThreads ? itterations : pages * maxThreads - itterations : maxThreads;
+
+                Task[] tasks = new Task[it];
+                for (int i = 0; i < it; i++)
+                {
+                    tasks[i] = Task.Factory.StartNew
+                    (
+                        async () =>
+                        {
+                            body(i);
+                        }
+                    );
+                }
+
+                if (wait)
+                {
+                    try
+                    {
+                        System.Threading.Tasks.Task.WaitAll(tasks);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw ex.InnerException;
+                    }
+                }
+            }
+
         }
     }
 }
