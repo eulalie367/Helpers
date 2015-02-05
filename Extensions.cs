@@ -886,7 +886,7 @@ namespace System
                 for (int i = 0; i < it; i++)
                 {
                     int ia = i;
-                    tasks[i] = Task.Run
+                    tasks[i] = Task.Factory.StartNew
                     (
                         async () =>
                         {
