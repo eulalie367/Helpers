@@ -151,5 +151,72 @@ namespace System
             }
             return retVal;
         }
+
+
+
+        public static bool Serialze_JSON<T>(this IEnumerable<T> ls, string fileName)
+        {
+            try
+            {
+                using (Stream str = File.OpenWrite(fileName))
+                {
+                    using (StreamWriter writer = new StreamWriter(str))
+                    {
+                        writer.Write(Serialze_JSON<T>(ls));
+                    }
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        public static string Serialze_JSON<T>(this IEnumerable<T> ls)
+        {
+            return Newtonsoft.Json.JsonConvert.SerializeObject(ls);
+        }
+        public static T DeSerialze_JSON_File<T>(this string fileName) where T : class
+        {
+            T retVal = default(T);
+            try
+            {
+                using (Stream str = File.OpenRead(fileName))
+                {
+                    string a = "";
+                    using (StreamReader reader = new StreamReader(str))
+                    {
+                        a = reader.ReadToEnd();
+                    }
+                    if(!string.IsNullOrEmpty(a))
+                    {
+                        return DeSerialze_JSON<T>(a);
+                    }
+                }
+            }
+            catch
+            {
+            }
+            return retVal;
+        }
+        public static T DeSerialze_JSON<T>(this string obj) where T : class
+        {
+            T retVal = default(T);
+            try
+            {
+                return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(obj, new Newtonsoft.Json.JsonSerializerSettings
+                {
+                    Error = delegate(object sender, Newtonsoft.Json.Serialization.ErrorEventArgs args)
+                    {
+                        Logger.Warn(args.ErrorContext.Error.Message);
+                        args.ErrorContext.Handled = true;
+                    }
+                }) as T;
+            }
+            catch
+            {
+            }
+            return retVal;
+        }
     }
 }
