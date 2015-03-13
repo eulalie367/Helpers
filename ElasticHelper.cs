@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using Spiral16.Utilities;
 
 namespace Spiral16.Utilities
 {
@@ -15,28 +17,37 @@ namespace Spiral16.Utilities
             get
             {
                 //this is so we can switch the collection on the fly.  We will most likely use this when we switch to 1 index per client
-                return "spiral16";
+                return "public";
             }
         }
 
+        private static Uri elasticURL;
         [Newtonsoft.Json.JsonIgnore]
         public static Uri ElasticURL
         {
+            set
+            {
+                elasticURL = value;
+            }
             get
             {
-                return new Uri("http://s16-elasticsearch.cloudapp.net:6782");
+                if (elasticURL == null)
+                    elasticURL = ConfigurationManager.ConnectionStrings["ElasticURL"].ConnectionString.ToUri();
+
+                return elasticURL;
             }
         }
-
 
 
         public string _index { get; set; }
         public string _type { get; set; }
-        public string _id { get; set; }
+        public Guid _id { get; set; }
         public string _version { get; set; }
         public bool found { get; set; }
         public bool created { get; set; }
         public object _source { get; set; }
+        [Newtonsoft.Json.JsonProperty("highlight")]
+        public Highlight highlight { get; set; }
 
 
 
@@ -44,7 +55,7 @@ namespace Spiral16.Utilities
         {
             t tmp = default(t);
 
-            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}/{1}/result/{2}", ElasticURL, Collection, id));
+            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/{2}", ElasticURL, Collection, id));
             req.ContentType = "application/json";
             req.Method = "GET";
             string retval = req.GetResponseString();
@@ -63,7 +74,7 @@ namespace Spiral16.Utilities
         public static ElasticHelper Save(string id, object value)
         {
             ElasticHelper retVal = new ElasticHelper();
-            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}/{1}/result/{2}", ElasticURL, Collection, id));
+            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/{2}", ElasticURL, Collection, id));
             req.ContentType = "application/json";
             req.Method = "PUT";
             string eh = req.GetResponseString(Newtonsoft.Json.JsonConvert.SerializeObject(value));
@@ -77,15 +88,21 @@ namespace Spiral16.Utilities
         public static string Save(IEnumerable<iElasticSearchObject> results)
         {
             ElasticHelper retVal = new ElasticHelper();
-            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}/{1}/result/_bulk", ElasticURL, Collection));
+            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_bulk", ElasticURL, Collection));
             req.ContentType = "application/json";
             req.Method = "PUT";
+            req.Timeout = 1000 * 60 * 3;//3minutes
 
             StringBuilder sb = new StringBuilder();
             foreach (iElasticSearchObject r in results)
             {
-                sb.AppendLine(string.Format("{{ \"index\": {{\"_id\": \"{0}\"}}}}", r._id));
-                sb.AppendLine(Newtonsoft.Json.JsonConvert.SerializeObject(r));
+                try
+                {
+                    sb.AppendLine(string.Format("{{ \"index\": {{ }} }}", r._id));
+                    sb.AppendLine(Newtonsoft.Json.JsonConvert.SerializeObject(r));
+                }
+                catch
+                { }
             }
 
 
@@ -102,7 +119,7 @@ namespace Spiral16.Utilities
         public static ElasticHelper Delete(string id)
         {
             ElasticHelper retVal = new ElasticHelper();
-            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}/{1}/result/{2}", ElasticURL, Collection, id));
+            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/{2}", ElasticURL, Collection, id));
             req.ContentType = "application/json";
             req.Method = "DELETE";
             string eh = req.GetResponseString();
@@ -115,17 +132,33 @@ namespace Spiral16.Utilities
 
         public static IEnumerable<t> FillEntities<t>(string query)
         {
-            IEnumerable<t> tmp = new List<t>();
+            SearchResults r;
+            return FillEntities<t>(query, out r);
+        }
+        public static IEnumerable<t> FillEntities<t>(string query, out SearchResults r)
+        {
+            return FillEntities<t>(Search(query, out r));
+        }
+        public static IEnumerable<ElasticHelper> Search(string query, out SearchResults r)
+        {
+            IEnumerable<ElasticHelper> tmp = new List<ElasticHelper>();
 
-            SearchResults r = FillEntities(query);
+            r = FillEntities(query);
 
             if (r.hits != null && r.hits.total > 0)
             {
-                IEnumerable<ElasticHelper> eh = r.hits.hits.Select(h => Newtonsoft.Json.JsonConvert.DeserializeObject<ElasticHelper>(h.ToString()));
-                if (eh != null && eh.Count() > 0)
-                {
-                    tmp = eh.Select(h => (t)Newtonsoft.Json.JsonConvert.DeserializeObject(h._source.ToString(), typeof(t)));
-                }
+                tmp = r.hits.hits.Select(h => Newtonsoft.Json.JsonConvert.DeserializeObject<ElasticHelper>(h.ToString()));
+            }
+
+            return tmp;
+        }
+        public static IEnumerable<t> FillEntities<t>(IEnumerable<ElasticHelper> eh)
+        {
+            IEnumerable<t> tmp = new List<t>();
+
+            if (eh != null && eh.Count() > 0)
+            {
+                tmp = eh.Select(h => (t)Newtonsoft.Json.JsonConvert.DeserializeObject(h._source.ToString(), typeof(t)));
             }
 
             return tmp;
@@ -135,10 +168,10 @@ namespace Spiral16.Utilities
         {
             SearchResults retVal = new SearchResults();
 
-            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}/{1}/result/_search", ElasticURL, Collection));
-            req.ContentType = "application/json";
+            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_search", ElasticURL, Collection));
+            req.ContentType = "application/x-www-form-urlencoded";
             req.Method = "POST";
-            string sr = req.GetResponseString(string.Format("{{ \"query\": {{ \"query_string\": {{ \"default_field\" : \"_all\", \"query\": \"{0}\" }} }} }}", query));
+            string sr = req.GetResponseString(query);
 
             if (sr != null)
             {
@@ -167,7 +200,7 @@ namespace Spiral16.Utilities
             public class HitInfo
             {
                 public int total { get; set; }
-                public float max_score { get; set; }
+                public float? max_score { get; set; }
                 public List<object> hits { get; set; }
             }
         }
@@ -175,6 +208,10 @@ namespace Spiral16.Utilities
         public interface iElasticSearchObject
         {
             string _id { get; }
+        }
+        public class Highlight
+        {
+            public List<string> Content { get; set; }
         }
     }
 }
