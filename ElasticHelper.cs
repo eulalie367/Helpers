@@ -98,7 +98,7 @@ namespace Spiral16.Utilities
             {
                 try
                 {
-                    sb.AppendLine(string.Format("{{ \"index\": {{ }} }}", r._id));
+                    sb.AppendLine(string.Format("{{ \"index\": {{ \"_id\":\"{0}\" }} }}", r._id));
                     sb.AppendLine(Newtonsoft.Json.JsonConvert.SerializeObject(r));
                 }
                 catch
