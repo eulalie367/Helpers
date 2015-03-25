@@ -137,13 +137,13 @@ namespace Spiral16.Utilities
         }
         public static IEnumerable<t> FillEntities<t>(string query, out SearchResults r)
         {
-            return FillEntities<t>(Search(query, out r));
+            return FillEntities<t>(Search(query, "", out r));
         }
-        public static IEnumerable<ElasticHelper> Search(string query, out SearchResults r)
+        public static IEnumerable<ElasticHelper> Search(string query, string scrollID, out SearchResults r)
         {
             IEnumerable<ElasticHelper> tmp = new List<ElasticHelper>();
 
-            r = FillEntities(query);
+            r = FillEntities(query, scrollID);
 
             if (r.hits != null && r.hits.total > 0)
             {
@@ -164,20 +164,37 @@ namespace Spiral16.Utilities
             return tmp;
         }
 
-        public static SearchResults FillEntities(string query)
+        public static SearchResults FillEntities(string query, string scrollID)
         {
             SearchResults retVal = new SearchResults();
+            HttpWebRequest req;
 
-            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_search", ElasticURL, Collection));
-            req.ContentType = "application/x-www-form-urlencoded";
-            req.Method = "POST";
-            string sr = req.GetResponseString(query);
-
-            if (sr != null)
+            if (string.IsNullOrEmpty(scrollID))
             {
-                retVal = Newtonsoft.Json.JsonConvert.DeserializeObject<SearchResults>(sr);
-            }
+                req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_search?scroll=5m", ElasticURL, Collection));
+                req.ContentType = "application/x-www-form-urlencoded";
+                req.Method = "POST";
+                string sr = req.GetResponseString(query);
 
+                if (sr != null)
+                {
+                    retVal = Newtonsoft.Json.JsonConvert.DeserializeObject<SearchResults>(sr);
+                }
+                scrollID = retVal._scroll_id;
+            }
+            else
+            {
+                req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}_search/scroll?scroll=5m", ElasticURL));
+                req.ContentType = "application/x-www-form-urlencoded";
+                req.Method = "POST";
+                string s = req.GetResponseString(scrollID);
+
+                if (s != null)
+                {
+                    retVal = Newtonsoft.Json.JsonConvert.DeserializeObject<SearchResults>(s);
+                }
+
+            }
             return retVal;
         }
 
@@ -189,6 +206,7 @@ namespace Spiral16.Utilities
             public bool timed_out { get; set; }
             public ShardInfo _shards { get; set; }
             public HitInfo hits { get; set; }
+            public string _scroll_id { get; set; }
 
             public class ShardInfo
             {

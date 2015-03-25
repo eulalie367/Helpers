@@ -655,6 +655,9 @@ namespace System
             {
                 value = value.Replace(c, (char)0);
             }
+
+            value = value.Replace("\"", "\\\"");
+            value = value.Replace("\\&", "\\\\&");
             return value;
         }
 
