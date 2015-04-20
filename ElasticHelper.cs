@@ -11,30 +11,35 @@ namespace Spiral16.Utilities
 {
     public class ElasticHelper
     {
+        private static string _collection;
         [Newtonsoft.Json.JsonIgnore]
         public static string Collection
         {
+            set
+            {
+                _collection = value;
+            }
             get
             {
                 //this is so we can switch the collection on the fly.  We will most likely use this when we switch to 1 index per client
-                return "public";
+                return string.IsNullOrEmpty(_collection) ? "public" : _collection;
             }
         }
 
-        private static Uri elasticURL;
+        private static Uri _elasticURL;
         [Newtonsoft.Json.JsonIgnore]
         public static Uri ElasticURL
         {
             set
             {
-                elasticURL = value;
+                _elasticURL = value;
             }
             get
             {
-                if (elasticURL == null)
-                    elasticURL = ConfigurationManager.ConnectionStrings["ElasticURL"].ConnectionString.ToUri();
+                if (_elasticURL == null)
+                    _elasticURL = ConfigurationManager.ConnectionStrings["ElasticURL"].ConnectionString.ToUri();
 
-                return elasticURL;
+                return _elasticURL;
             }
         }
 
@@ -130,20 +135,25 @@ namespace Spiral16.Utilities
             return retVal;
         }
 
-        public static IEnumerable<t> FillEntities<t>(string query)
+        
+        
+        public static IEnumerable<t> Search<t>(string query, string scrollID, out SearchResults r)
         {
-            SearchResults r;
-            return FillEntities<t>(query, out r);
+            return Search<t>(query, Collection, scrollID, out r);
         }
-        public static IEnumerable<t> FillEntities<t>(string query, out SearchResults r)
+        public static IEnumerable<t> Search<t>(string query, string index, string scrollID, out SearchResults r)
         {
-            return FillEntities<t>(Search(query, "", out r));
+            return convertElasticHelper<t>(Search(query, index, scrollID, out r));
         }
         public static IEnumerable<ElasticHelper> Search(string query, string scrollID, out SearchResults r)
         {
+            return Search(query, Collection, scrollID, out r);
+        }
+        public static IEnumerable<ElasticHelper> Search(string query, string index, string scrollID, out SearchResults r)
+        {
             IEnumerable<ElasticHelper> tmp = new List<ElasticHelper>();
 
-            r = FillEntities(query, scrollID);
+            r = Search(query, index, scrollID);
 
             if (r.hits != null && r.hits.total > 0)
             {
@@ -152,26 +162,19 @@ namespace Spiral16.Utilities
 
             return tmp;
         }
-        public static IEnumerable<t> FillEntities<t>(IEnumerable<ElasticHelper> eh)
+
+        public static SearchResults Search(string query, string scrollID)
         {
-            IEnumerable<t> tmp = new List<t>();
-
-            if (eh != null && eh.Count() > 0)
-            {
-                tmp = eh.Select(h => (t)Newtonsoft.Json.JsonConvert.DeserializeObject(h._source.ToString(), typeof(t)));
-            }
-
-            return tmp;
+            return Search(query, Collection, scrollID);
         }
-
-        public static SearchResults FillEntities(string query, string scrollID)
+        public static SearchResults Search(string query, string index, string scrollID)
         {
             SearchResults retVal = new SearchResults();
             HttpWebRequest req;
 
             if (string.IsNullOrEmpty(scrollID))
             {
-                req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_search?scroll=5m", ElasticURL, Collection));
+                req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_search?scroll=5m", ElasticURL, index));
                 req.ContentType = "application/x-www-form-urlencoded";
                 req.Method = "POST";
                 string sr = req.GetResponseString(query);
@@ -198,6 +201,17 @@ namespace Spiral16.Utilities
             return retVal;
         }
 
+        private static IEnumerable<t> convertElasticHelper<t>(IEnumerable<ElasticHelper> eh)
+        {
+            IEnumerable<t> tmp = new List<t>();
+
+            if (eh != null && eh.Count() > 0)
+            {
+                tmp = eh.Select(h => (t)Newtonsoft.Json.JsonConvert.DeserializeObject(h._source.ToString(), typeof(t)));
+            }
+
+            return tmp;
+        }
 
 
         public class SearchResults
