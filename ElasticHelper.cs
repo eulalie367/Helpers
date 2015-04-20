@@ -21,7 +21,11 @@ namespace Spiral16.Utilities
             }
             get
             {
-                //this is so we can switch the collection on the fly.  We will most likely use this when we switch to 1 index per client
+                if (string.IsNullOrEmpty(_collection))
+                {
+                    _collection = ConfigurationManager.AppSettings["ElasticCollection"];
+                }
+
                 return string.IsNullOrEmpty(_collection) ? "public" : _collection;
             }
         }
