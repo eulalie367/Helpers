@@ -988,5 +988,22 @@ namespace System
             }
 
         }
+
+
+        public static string RenderLessFile(this FileInfo lessFile)
+        { 
+            string lessText = "";
+            using(var reader = lessFile.OpenText())
+            {
+                lessText = reader.ReadToEnd();
+            }
+
+            var config = new dotless.Core.configuration.DotlessConfiguration(dotless.Core.configuration.DotlessConfiguration.GetDefault());
+
+            Directory.SetCurrentDirectory(lessFile.DirectoryName);
+            config.RootPath = lessFile.DirectoryName;
+
+            return dotless.Core.Less.Parse(lessText, config);
+        }
     }
 }
