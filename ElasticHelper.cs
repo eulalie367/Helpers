@@ -225,6 +225,7 @@ namespace Spiral16.Utilities
         public interface iElasticSearchObject
         {
             string _id { get; }
+            long FeedID { get; }
         }
         public class Highlight
         {
