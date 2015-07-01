@@ -96,8 +96,12 @@ namespace Spiral16.Utilities
 
         public static string Save(IEnumerable<iElasticSearchObject> results)
         {
+            return Save(results, Collection);
+        }
+        public static string Save(IEnumerable<iElasticSearchObject> results, string collection)
+        {
             ElasticHelper retVal = new ElasticHelper();
-            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_bulk", ElasticURL, Collection));
+            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_bulk", ElasticURL, collection));
             req.ContentType = "application/json";
             req.Method = "PUT";
             req.Timeout = 1000 * 60 * 3;//3minutes
