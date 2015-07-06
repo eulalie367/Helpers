@@ -47,6 +47,24 @@ namespace Spiral16.Utilities
             }
         }
 
+        private static string _scrollTime;
+        [Newtonsoft.Json.JsonIgnore]
+        public static string ScrollTime
+        {
+            set
+            {
+                _scrollTime = value;
+            }
+            get
+            {
+                if (string.IsNullOrEmpty(_scrollTime))
+                    _scrollTime = ConfigurationManager.AppSettings["ScrollTime"];
+                if (string.IsNullOrEmpty(_scrollTime))
+                    _scrollTime = "10m";
+
+                return _scrollTime;
+            }
+        }
 
         public string _index { get; set; }
         public string _type { get; set; }
@@ -60,154 +78,113 @@ namespace Spiral16.Utilities
 
 
 
-        public static t FillEntity<t>(string id)
+        public static t FillEntity<t>(string id, string index, string type) where t : class, new()
         {
-            t tmp = default(t);
+            var connectionPool = new Elasticsearch.Net.ConnectionPool.SniffingConnectionPool(new[] { ElasticHelper.ElasticURL });
 
-            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/{2}", ElasticURL, Collection, id));
-            req.ContentType = "application/json";
-            req.Method = "GET";
-            string retval = req.GetResponseString();
-            if (!string.IsNullOrEmpty(retval))
+            Nest.ConnectionSettings settings = new Nest.ConnectionSettings(connectionPool);
+
+            var client = new Nest.ElasticClient(settings);
+
+
+            return client.Get<t>(g => g
+                .Index(index)
+                .Type(type)
+                .Id(id)
+            ).Source;
+
+        }
+
+
+        public static Nest.IIndexResponse Save(iElasticSearchObject result, string index, string type)
+        {
+            var connectionPool = new Elasticsearch.Net.ConnectionPool.SniffingConnectionPool(new[] { ElasticHelper.ElasticURL });
+
+            Nest.ConnectionSettings settings = new Nest.ConnectionSettings(connectionPool);
+
+            var client = new Nest.ElasticClient(settings);
+
+            Nest.BulkDescriptor descriptor = new Nest.BulkDescriptor();
+
+
+            return client.Index(result, i => i
+                .Id(result._id)
+                .Index(index)
+                .Type(type)
+            );
+        }
+
+        public static Nest.IBulkResponse Save<t>(IEnumerable<t> results, string index, string type) where t : class, iElasticSearchObject
+        {
+            var connectionPool = new Elasticsearch.Net.ConnectionPool.SniffingConnectionPool(new[] { ElasticHelper.ElasticURL });
+
+            Nest.ConnectionSettings settings = new Nest.ConnectionSettings(connectionPool);
+
+            var client = new Nest.ElasticClient(settings);
+
+            Nest.BulkDescriptor descriptor = new Nest.BulkDescriptor();
+
+            foreach (t i in results)
             {
-                ElasticHelper eh = Newtonsoft.Json.JsonConvert.DeserializeObject<ElasticHelper>(retval);
-                if (eh != null && eh.found && eh._source != null)
-                {
-                    tmp = (t)Newtonsoft.Json.JsonConvert.DeserializeObject(eh._source.ToString(), typeof(t));
-                }
+                descriptor.Index<t>(op => op
+                    .Document(i)
+                    .Id(i._id)
+                    .Index(index)
+                    .Type(type)
+                );
             }
 
-            return tmp;
+            return client.Bulk(descriptor);
         }
 
-        public static ElasticHelper Save(string id, object value)
+
+        public static Nest.IDeleteResponse Delete(string id, string index, string type)
         {
-            ElasticHelper retVal = new ElasticHelper();
-            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/{2}", ElasticURL, Collection, id));
-            req.ContentType = "application/json";
-            req.Method = "PUT";
-            string eh = req.GetResponseString(Newtonsoft.Json.JsonConvert.SerializeObject(value));
-            if (eh != null)
-            {
-                retVal = Newtonsoft.Json.JsonConvert.DeserializeObject<ElasticHelper>(eh);
-            }
-            return retVal;
+            var connectionPool = new Elasticsearch.Net.ConnectionPool.SniffingConnectionPool(new[] { ElasticHelper.ElasticURL });
+
+            Nest.ConnectionSettings settings = new Nest.ConnectionSettings(connectionPool);
+
+            var client = new Nest.ElasticClient(settings);
+
+
+            return client.Delete<string>(d => d
+                .Index(index)
+                .Type(type)
+                .Id(id)
+            );
+
         }
 
-        public static string Save(IEnumerable<iElasticSearchObject> results)
+
+
+        public static Nest.ISearchResponse<t> Search<t>(Nest.SearchDescriptor<t> req, string indexQuery, string[] types) where t : class, new()
         {
-            return Save(results, Collection);
+            var connectionPool = new Elasticsearch.Net.ConnectionPool.SniffingConnectionPool(new[] { ElasticHelper.ElasticURL });
+
+            Nest.ConnectionSettings settings = new Nest.ConnectionSettings(connectionPool);
+
+            var client = new Nest.ElasticClient(settings);
+
+            return client.Search<t>
+            (
+                req
+                .Types(types)
+                .Indices(indexQuery)
+                .Scroll(ElasticHelper.ScrollTime)
+            );
         }
-        public static string Save(IEnumerable<iElasticSearchObject> results, string collection)
+
+        public static Nest.ISearchResponse<t> Scroll<t>(string scrollID) where t : class, new()
         {
-            ElasticHelper retVal = new ElasticHelper();
-            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_bulk", ElasticURL, collection));
-            req.ContentType = "application/json";
-            req.Method = "PUT";
-            req.Timeout = 1000 * 60 * 3;//3minutes
+            var connectionPool = new Elasticsearch.Net.ConnectionPool.SniffingConnectionPool(new[] { ElasticHelper.ElasticURL });
 
-            StringBuilder sb = new StringBuilder();
-            foreach (iElasticSearchObject r in results)
-            {
-                try
-                {
-                    sb.AppendLine(string.Format("{{ \"index\": {{ \"_id\":\"{0}\" }} }}", r._id));
-                    sb.AppendLine(Newtonsoft.Json.JsonConvert.SerializeObject(r));
-                }
-                catch
-                { }
-            }
+            Nest.ConnectionSettings settings = new Nest.ConnectionSettings(connectionPool);
 
+            var client = new Nest.ElasticClient(settings);
 
-            string eh = req.GetResponseString(sb.ToString());
-            //if (eh != null)
-            //{
-            //    retVal = Newtonsoft.Json.JsonConvert.DeserializeObject<ElasticHelper>(eh);
-            //}
-            //return retVal;
-            return eh;
+            return client.Scroll<t>(sc => sc.ScrollId(scrollID).Scroll(ElasticHelper.ScrollTime));
         }
 
-        
-        public static ElasticHelper Delete(string id)
-        {
-            ElasticHelper retVal = new ElasticHelper();
-            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/{2}", ElasticURL, Collection, id));
-            req.ContentType = "application/json";
-            req.Method = "DELETE";
-            string eh = req.GetResponseString();
-            if (eh != null)
-            {
-                retVal = Newtonsoft.Json.JsonConvert.DeserializeObject<ElasticHelper>(eh);
-            }
-            return retVal;
-        }
-
-        
-        
-        public static IEnumerable<t> Search<t>(string query, string scrollID, out SearchResults r)
-        {
-            return Search<t>(query, Collection, scrollID, out r);
-        }
-        public static IEnumerable<t> Search<t>(string query, string index, string scrollID, out SearchResults r)
-        {
-            return convertElasticHelper<t>(Search(query, index, scrollID, out r));
-        }
-        public static IEnumerable<ElasticHelper> Search(string query, string scrollID, out SearchResults r)
-        {
-            return Search(query, Collection, scrollID, out r);
-        }
-        public static IEnumerable<ElasticHelper> Search(string query, string index, string scrollID, out SearchResults r)
-        {
-            IEnumerable<ElasticHelper> tmp = new List<ElasticHelper>();
-
-            r = Search(query, index, scrollID);
-
-            if (r.hits != null && r.hits.total > 0)
-            {
-                tmp = r.hits.hits.Select(h => Newtonsoft.Json.JsonConvert.DeserializeObject<ElasticHelper>(h.ToString()));
-            }
-
-            return tmp;
-        }
-
-        public static SearchResults Search(string query, string scrollID)
-        {
-            return Search(query, Collection, scrollID);
-        }
-        public static SearchResults Search(string query, string index, string scrollID)
-        {
-            SearchResults retVal = new SearchResults();
-            HttpWebRequest req;
-
-            if (string.IsNullOrEmpty(scrollID))
-            {
-                req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_search?scroll=5m", ElasticURL, index));
-                req.ContentType = "application/x-www-form-urlencoded";
-                req.Method = "POST";
-                string sr = req.GetResponseString(query);
-
-                if (sr != null)
-                {
-                    retVal = Newtonsoft.Json.JsonConvert.DeserializeObject<SearchResults>(sr);
-                }
-                scrollID = retVal._scroll_id;
-            }
-            else
-            {
-                req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}_search/scroll?scroll=5m", ElasticURL));
-                req.ContentType = "application/x-www-form-urlencoded";
-                req.Method = "POST";
-                string s = req.GetResponseString(scrollID);
-
-                if (s != null)
-                {
-                    retVal = Newtonsoft.Json.JsonConvert.DeserializeObject<SearchResults>(s);
-                }
-
-            }
-            return retVal;
-        }
 
         private static IEnumerable<t> convertElasticHelper<t>(IEnumerable<ElasticHelper> eh)
         {
@@ -248,6 +225,7 @@ namespace Spiral16.Utilities
         public interface iElasticSearchObject
         {
             string _id { get; }
+            long FeedID { get; }
         }
         public class Highlight
         {
