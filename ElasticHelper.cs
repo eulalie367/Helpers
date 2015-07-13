@@ -100,32 +100,36 @@ namespace Spiral16.Utilities
         }
         public static string Save(IEnumerable<iElasticSearchObject> results, string collection)
         {
-            ElasticHelper retVal = new ElasticHelper();
-            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_bulk", ElasticURL, collection));
-            req.ContentType = "application/json";
-            req.Method = "PUT";
-            req.Timeout = 1000 * 60 * 3;//3minutes
-
-            StringBuilder sb = new StringBuilder();
-            foreach (iElasticSearchObject r in results)
+            if (results != null && results.Count() > 0)
             {
-                try
+                ElasticHelper retVal = new ElasticHelper();
+                HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_bulk", ElasticURL, collection));
+                req.ContentType = "application/json";
+                req.Method = "PUT";
+                req.Timeout = 1000 * 60 * 3;//3minutes
+
+                StringBuilder sb = new StringBuilder();
+                foreach (iElasticSearchObject r in results)
                 {
-                    sb.AppendLine(string.Format("{{ \"index\": {{ \"_id\":\"{0}\" }} }}", r._id));
-                    sb.AppendLine(Newtonsoft.Json.JsonConvert.SerializeObject(r));
+                    try
+                    {
+                        sb.AppendLine(string.Format("{{ \"index\": {{ \"_id\":\"{0}\" }} }}", r._id));
+                        sb.AppendLine(Newtonsoft.Json.JsonConvert.SerializeObject(r));
+                    }
+                    catch
+                    { }
                 }
-                catch
-                { }
+
+
+                string eh = req.GetResponseString(sb.ToString());
+                //if (eh != null)
+                //{
+                //    retVal = Newtonsoft.Json.JsonConvert.DeserializeObject<ElasticHelper>(eh);
+                //}
+                //return retVal;
+                return eh;
             }
-
-
-            string eh = req.GetResponseString(sb.ToString());
-            //if (eh != null)
-            //{
-            //    retVal = Newtonsoft.Json.JsonConvert.DeserializeObject<ElasticHelper>(eh);
-            //}
-            //return retVal;
-            return eh;
+            return "";
         }
 
         
@@ -185,6 +189,7 @@ namespace Spiral16.Utilities
                 req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_search?scroll=5m", ElasticURL, index));
                 req.ContentType = "application/x-www-form-urlencoded";
                 req.Method = "POST";
+                req.Timeout = 300;
                 string sr = req.GetResponseString(query);
 
                 if (sr != null)
