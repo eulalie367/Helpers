@@ -871,6 +871,7 @@ namespace System
                 }
             }
         }
+       
         public static void ForEachAsync<T>(this IEnumerable<T> source, int maxThreads, Func<T, bool> body, bool wait)
         {
             int itterations = source.Count();
@@ -913,80 +914,14 @@ namespace System
             }
         }
 
-        public static void ForEachAsync(this int itterations, Func<int, System.Threading.Tasks.Task> body)
+        public static void ForEachAsync(this int itterations, Func<int, bool> body)
         {
-            itterations.ForEachAsync(32, body, true);
-        }
-        public static void ForEachAsync(this int itterations, int maxThreads, Func<int, System.Threading.Tasks.Task> body)
-        {
-            itterations.ForEachAsync(maxThreads, body, true);
-        }
-        public static void ForEachAsync(this int itterations, int maxThreads, Func<int, System.Threading.Tasks.Task> body, bool wait)
-        {
-            int[] it = new int[itterations];
-            for (int i = 0; i < itterations; i++)
-            {
-                it[i] = i;
-            }
-            var partitions = System.Collections.Concurrent.Partitioner.Create(it).GetPartitions(itterations < maxThreads ? itterations : maxThreads);
-
-            IEnumerable<System.Threading.Tasks.Task> tasks = partitions.Select
-                (p =>
-                    System.Threading.Tasks.Task.Run
-                    (
-                        async delegate
-                        {
-                            using (p)
-                            {
-                                while (p.MoveNext())
-                                {
-                                    await body(p.Current);
-                                }
-                            }
-                        }
-                    )
-                );
-
-            if (wait && tasks != null && tasks.Count() > 0)
-            {
-                System.Threading.Tasks.Task.WaitAll(tasks.ToArray());
-            }
+            itterations.ForEachAsync(itterations, body, true);
         }
         public static void ForEachAsync(this int itterations, int maxThreads, Func<int, bool> body, bool wait)
         {
-            int pages = itterations > maxThreads ? itterations / maxThreads + 1 : 1;
-
-            for (int p = 1; p <= pages; p++)
-            {
-
-
-                int it = p == pages ? itterations <= maxThreads ? itterations : pages * maxThreads - itterations : maxThreads;
-
-                Task[] tasks = new Task[it];
-                for (int i = 0; i < it; i++)
-                {
-                    tasks[i] = Task.Factory.StartNew
-                    (
-                        async () =>
-                        {
-                            body(i);
-                        }
-                    );
-                }
-
-                if (wait)
-                {
-                    try
-                    {
-                        System.Threading.Tasks.Task.WaitAll(tasks);
-                    }
-                    catch (Exception ex)
-                    {
-                        throw ex.InnerException;
-                    }
-                }
-            }
-
+            int[] i = new int[itterations];
+            i.ForEachAsync<int>(maxThreads, body, wait);
         }
 
 
