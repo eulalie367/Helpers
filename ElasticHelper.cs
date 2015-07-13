@@ -189,7 +189,7 @@ namespace Spiral16.Utilities
                 req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_search?scroll=5m", ElasticURL, index));
                 req.ContentType = "application/x-www-form-urlencoded";
                 req.Method = "POST";
-                req.Timeout = 300;
+                req.Timeout = 30000;
                 string sr = req.GetResponseString(query);
 
                 if (sr != null)
@@ -203,6 +203,7 @@ namespace Spiral16.Utilities
                 req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}_search/scroll?scroll=5m", ElasticURL));
                 req.ContentType = "application/x-www-form-urlencoded";
                 req.Method = "POST";
+                req.Timeout = 30000;
                 string s = req.GetResponseString(scrollID);
 
                 if (s != null)
