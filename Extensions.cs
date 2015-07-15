@@ -940,5 +940,52 @@ namespace System
 
             return dotless.Core.Less.Parse(lessText, config);
         }
+
+        public static List<Uri> GetLinks(this string html)
+        {
+            List<Uri> retVal = new List<Uri>();
+            string linkExp = @"(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([^$ ]*)*";
+
+            MatchCollection mc = Regex.Matches(html, linkExp, RegexOptions.IgnoreCase | RegexOptions.Multiline);
+
+            if (mc != null && mc.Count > 0)
+            {
+                foreach (Match href in mc)
+                {
+                    if (href != null && !string.IsNullOrEmpty(href.Value))
+                    {
+                        Uri u = href.Value.ToUri();
+                        if (u != null)
+                        {
+                            u = u.NormalizeUrl();
+
+
+                            if (u != null && !retVal.Contains(u) && (u.Scheme.ToLower() == "http" || u.Scheme.ToLower() == "https"))
+                            {
+                                retVal.Add(u);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return retVal;
+        }
+
+
+        public static Uri NormalizeUrl(this Uri u)
+        {
+            string sUrl = u.AbsoluteUri;
+            sUrl = sUrl.ToLower().Trim();
+            sUrl = sUrl.Replace("www.", "");
+            return sUrl.ToUri();
+        }
+
+        public static string GetDomain(this Uri url)
+        {
+            //TODO: should subdomains return the root domain?  If so, add logic here
+            return url.Host;
+        }
+
     }
 }
