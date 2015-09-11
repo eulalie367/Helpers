@@ -211,6 +211,8 @@ namespace System.Data
                         using (SqlCommand com = new SqlCommand(sql, conn))
                         {
                             com.CommandType = commandType;
+                            com.CommandTimeout = TimeOut;
+
                             if (Params != null && Params.Length > 0)
                                 com.Parameters.AddRange(Params);
 
@@ -308,6 +310,8 @@ namespace System.Data
                         using (SqlCommand com = new SqlCommand(sql, conn))
                         {
                             com.CommandType = commandType;
+                            com.CommandTimeout = TimeOut;
+
                             if (Params != null && Params.Length > 0)
                                 com.Parameters.AddRange(Params);
 
