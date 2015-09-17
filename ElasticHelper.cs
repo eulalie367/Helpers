@@ -97,7 +97,7 @@ namespace Spiral16.Utilities
             HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/{2}", ElasticURL, Collection, id));
             req.ContentType = "application/json";
             req.Method = "PUT";
-            string eh = req.GetResponseString(Newtonsoft.Json.JsonConvert.SerializeObject(value));
+            string eh = req.GetResponseString(Newtonsoft.Json.JsonConvert.SerializeObject(value, Newtonsoft.Json.Formatting.None, new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore }));
             if (eh != null)
             {
                 retVal = Newtonsoft.Json.JsonConvert.DeserializeObject<ElasticHelper>(eh);
@@ -125,7 +125,7 @@ namespace Spiral16.Utilities
                     try
                     {
                         sb.AppendLine(string.Format("{{ \"index\": {{ \"_id\":\"{0}\" }} }}", r._id));
-                        sb.AppendLine(Newtonsoft.Json.JsonConvert.SerializeObject(r));
+                        sb.AppendLine(Newtonsoft.Json.JsonConvert.SerializeObject(r, Newtonsoft.Json.Formatting.None, new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore }));
                     }
                     catch
                     { }
