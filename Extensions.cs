@@ -81,6 +81,25 @@ namespace System
                 return retVal;
             return null;
         }
+        public static double? ToDouble(this object obj)
+        {
+            double? retVal = null;
+            try
+            {
+                if (obj != null)
+                {
+                    string str = obj.ToString();
+
+                    double tmp = -1;
+                    if (!string.IsNullOrEmpty(str))
+                        if (double.TryParse(str, out tmp))
+                            retVal = tmp;
+                }
+            }
+            catch
+            { }
+            return retVal;
+        }
         public static double? ToDouble(this string str)
         {
             double? retVal = null;
