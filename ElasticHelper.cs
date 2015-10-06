@@ -32,8 +32,7 @@ namespace Spiral16.Utilities
 
         public static string GetCollection(int organizationID)
         {
-            string collection = "";// = "current.1.0.1";
-            collection += organizationID != 1 ? organizationID.ToString() : "";
+            string collection = organizationID != 1 ? organizationID.ToString() : "current.1.0.2";
             return collection;
         }
 
@@ -62,6 +61,7 @@ namespace Spiral16.Utilities
         public bool found { get; set; }
         public bool created { get; set; }
         public object _source { get; set; }
+        public double _score { get; set; }
         [Newtonsoft.Json.JsonProperty("highlight")]
         public Highlight highlight { get; set; }
 
@@ -97,7 +97,7 @@ namespace Spiral16.Utilities
             HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/{2}", ElasticURL, Collection, id));
             req.ContentType = "application/json";
             req.Method = "PUT";
-            string eh = req.GetResponseString(Newtonsoft.Json.JsonConvert.SerializeObject(value));
+            string eh = req.GetResponseString(Newtonsoft.Json.JsonConvert.SerializeObject(value, Newtonsoft.Json.Formatting.None, new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore }));
             if (eh != null)
             {
                 retVal = Newtonsoft.Json.JsonConvert.DeserializeObject<ElasticHelper>(eh);
@@ -125,7 +125,7 @@ namespace Spiral16.Utilities
                     try
                     {
                         sb.AppendLine(string.Format("{{ \"index\": {{ \"_id\":\"{0}\" }} }}", r._id));
-                        sb.AppendLine(Newtonsoft.Json.JsonConvert.SerializeObject(r));
+                        sb.AppendLine(Newtonsoft.Json.JsonConvert.SerializeObject(r, Newtonsoft.Json.Formatting.None, new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore }));
                     }
                     catch
                     { }
@@ -143,7 +143,7 @@ namespace Spiral16.Utilities
             return "";
         }
 
-        
+
         public static ElasticHelper Delete(string id)
         {
             ElasticHelper retVal = new ElasticHelper();
@@ -158,8 +158,8 @@ namespace Spiral16.Utilities
             return retVal;
         }
 
-        
-        
+
+
         public static IEnumerable<t> Search<t>(string query, string scrollID, out SearchResults r)
         {
             return Search<t>(query, Collection, scrollID, out r);
@@ -168,10 +168,10 @@ namespace Spiral16.Utilities
         {
             return convertElasticHelper<t>(Search(query, index, scrollID, out r));
         }
-        public static IEnumerable<ElasticHelper> Search(string query, string scrollID, out SearchResults r)
-        {
-            return Search(query, Collection, scrollID, out r);
-        }
+        //public static IEnumerable<ElasticHelper> Search(string query, string scrollID, out SearchResults r)
+        //{
+        //    return Search(query, Collection, scrollID, out r);
+        //}
         public static IEnumerable<ElasticHelper> Search(string query, string index, string scrollID, out SearchResults r)
         {
             IEnumerable<ElasticHelper> tmp = new List<ElasticHelper>();
@@ -185,10 +185,41 @@ namespace Spiral16.Utilities
 
             return tmp;
         }
-
-        public static SearchResults Search(string query, string scrollID)
+        public static IEnumerable<ElasticHelper> Search(string query, string index, out SearchResults r)
         {
-            return Search(query, Collection, scrollID);
+            IEnumerable<ElasticHelper> tmp = new List<ElasticHelper>();
+
+            r = Search(query, index);
+
+            if (r.hits != null && r.hits.total > 0)
+            {
+                tmp = r.hits.hits.Select(h => Newtonsoft.Json.JsonConvert.DeserializeObject<ElasticHelper>(h.ToString()));
+            }
+
+            return tmp;
+        }
+
+        //public static SearchResults Search(string query, string scrollID)
+        //{
+        //    return Search(query, Collection, scrollID);
+        //}
+        public static SearchResults Search(string query, string index)
+        {
+            SearchResults retVal = new SearchResults();
+            HttpWebRequest req;
+
+            req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_search", ElasticURL, index));
+            req.ContentType = "application/x-www-form-urlencoded";
+            req.Method = "POST";
+            req.Timeout = 300000;
+            string sr = req.GetResponseString(query);
+
+            if (sr != null)
+            {
+                retVal = Newtonsoft.Json.JsonConvert.DeserializeObject<SearchResults>(sr);
+                retVal.RawJSON = sr;
+            }
+            return retVal;
         }
         public static SearchResults Search(string query, string index, string scrollID)
         {
@@ -212,7 +243,7 @@ namespace Spiral16.Utilities
             }
             else
             {
-                req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}_search/scroll?scroll=5m", ElasticURL));
+                req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_search?scroll=5m", ElasticURL, index));
                 req.ContentType = "application/x-www-form-urlencoded";
                 req.Method = "POST";
                 req.Timeout = 60000;
@@ -273,6 +304,15 @@ namespace Spiral16.Utilities
         {
             public List<string> Content { get; set; }
         }
-    
+
+
+        public static void RefreshCollection(string collection)
+        {
+            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/_refresh", ElasticURL, collection));
+            req.ContentType = "application/x-www-form-urlencoded";
+            req.Method = "POST";
+            string s = req.GetResponseString();
+
+        }
     }
 }
