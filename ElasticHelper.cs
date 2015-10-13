@@ -32,7 +32,7 @@ namespace Spiral16.Utilities
 
         public static string GetCollection(int organizationID)
         {
-            string collection = organizationID != 1 ? organizationID.ToString() : "current.1.0.2";
+            string collection = organizationID != 1 ? organizationID.ToString() : "current";
             return collection;
         }
 
@@ -61,7 +61,7 @@ namespace Spiral16.Utilities
         public bool found { get; set; }
         public bool created { get; set; }
         public object _source { get; set; }
-        public double _score { get; set; }
+        public double? _score { get; set; }
         [Newtonsoft.Json.JsonProperty("highlight")]
         public Highlight highlight { get; set; }
 
@@ -97,7 +97,8 @@ namespace Spiral16.Utilities
             HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/{2}", ElasticURL, Collection, id));
             req.ContentType = "application/json";
             req.Method = "PUT";
-            string eh = req.GetResponseString(Newtonsoft.Json.JsonConvert.SerializeObject(value, Newtonsoft.Json.Formatting.None, new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore }));
+            string ser = Newtonsoft.Json.JsonConvert.SerializeObject(value, Newtonsoft.Json.Formatting.None, new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore });
+            string eh = req.GetResponseString(ser);
             if (eh != null)
             {
                 retVal = Newtonsoft.Json.JsonConvert.DeserializeObject<ElasticHelper>(eh);
@@ -243,7 +244,7 @@ namespace Spiral16.Utilities
             }
             else
             {
-                req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/result/_search?scroll=5m", ElasticURL, index));
+                req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}_search/scroll?scroll=5m", ElasticURL, index));
                 req.ContentType = "application/x-www-form-urlencoded";
                 req.Method = "POST";
                 req.Timeout = 60000;
@@ -312,6 +313,73 @@ namespace Spiral16.Utilities
             req.ContentType = "application/x-www-form-urlencoded";
             req.Method = "POST";
             string s = req.GetResponseString();
+
+        }
+
+        public static void CreateCollection(string collection)
+        {
+            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}{1}/", ElasticURL, collection));
+            req.ContentType = "application/x-www-form-urlencoded";
+            req.Method = "POST";
+            string s = req.GetResponseString();
+
+        }
+
+        public static void RemoveCollectionAlias(string alias, string collection)
+        {
+            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}_aliases/", ElasticURL));
+
+            var action = new
+            {
+                actions = new[] { 
+                    new { remove = new { index=collection, alias = alias } }
+                }
+            };
+
+
+
+            req.ContentType = "application/x-www-form-urlencoded";
+            req.Method = "POST";
+            string s = req.GetResponseString(Newtonsoft.Json.JsonConvert.SerializeObject(action));
+
+        }
+
+        public static void AddCollectionAlias(string alias, string collection)
+        {
+            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}_aliases/", ElasticURL));
+
+            var action = new
+            {
+                actions = new[] { 
+                    new { add = new { index=collection, alias = alias } }
+                }
+            };
+
+
+
+            req.ContentType = "application/x-www-form-urlencoded";
+            req.Method = "PUT";
+            string s = req.GetResponseString(Newtonsoft.Json.JsonConvert.SerializeObject(action));
+
+        }
+
+        public static void CollectionReAlias(string alias, string collectionOld, string collectionNew)
+        {
+            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(string.Format("{0}_aliases/", ElasticURL));
+
+            var action = new
+            {
+                actions = new object[] { 
+                    new { remove = new { index=collectionOld, alias = alias } },
+                    new { add = new { index=collectionNew, alias = alias } }
+                }
+            };
+
+
+
+            req.ContentType = "application/x-www-form-urlencoded";
+            req.Method = "POST";
+            string s = req.GetResponseString(Newtonsoft.Json.JsonConvert.SerializeObject(action));
 
         }
     }
