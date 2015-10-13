@@ -114,24 +114,6 @@ namespace System
             { }
             return retVal;
         }
-        public static double? ToDouble(this object obj)
-        {
-            double? retVal = null;
-            try
-            {
-                if (obj != null)
-                {
-                    string str = obj.ToString();
-                    double tmp = -1;
-                    if (!string.IsNullOrEmpty(str))
-                        if (double.TryParse(str, out tmp))
-                            retVal = tmp;
-                }
-            }
-            catch
-            { }
-            return retVal;
-        }
         public static Uri ToUri(this string str)
         {
             Uri retVal = null;
