@@ -26,7 +26,7 @@ namespace Spiral16.Utilities
                     _collection = ConfigurationManager.AppSettings["ElasticCollection"];
                 }
 
-                return string.IsNullOrEmpty(_collection) ? "public" : _collection;
+                return string.IsNullOrEmpty(_collection) ? "public" : _collection; 
             }
         }
 
