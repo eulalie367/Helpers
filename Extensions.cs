@@ -81,6 +81,25 @@ namespace System
                 return retVal;
             return null;
         }
+        public static double? ToDouble(this object obj)
+        {
+            double? retVal = null;
+            try
+            {
+                if (obj != null)
+                {
+                    string str = obj.ToString();
+
+                    double tmp = -1;
+                    if (!string.IsNullOrEmpty(str))
+                        if (double.TryParse(str, out tmp))
+                            retVal = tmp;
+                }
+            }
+            catch
+            { }
+            return retVal;
+        }
         public static double? ToDouble(this string str)
         {
             double? retVal = null;
@@ -687,7 +706,32 @@ namespace System
                 return string.Empty;
             }
 
-            value = Uri.EscapeDataString(value);
+            // The max that Uri.EscapeDataString can handle is 32,766 characters
+            // so we will handle the bigger strings in chunks of 32,000
+            if (value.Length > 32000)
+            {
+                StringBuilder longString = new StringBuilder();
+                int i = 0;
+                while (i < value.Length)
+                {
+                    int leftOvers = value.Length - i;
+                    bool lastBit = false;
+                    // once the remainder gets below 32,000 use the leftOvers value
+                    if (leftOvers < 32000)
+                    {
+                        lastBit = true;
+                    }
+                    string subString = value.Substring(i, lastBit ? leftOvers : 32000);
+                    longString.Append(Uri.EscapeDataString(subString));
+                    i += 32000;
+                }
+
+                value = longString.ToString();
+            }
+            else
+            {
+                value = Uri.EscapeDataString(value);
+            }
 
             // UrlEncode escapes with lowercase characters (e.g. %2f) but oAuth needs %2F
             value = System.Text.RegularExpressions.Regex.Replace(value, "(%[0-9a-f][0-9a-f])", c => c.Value.ToUpper());
@@ -699,7 +743,10 @@ namespace System
                 .Replace("$", "%24")
                 .Replace("!", "%21")
                 .Replace("*", "%2A")
-                .Replace("'", "%27");
+                .Replace("'", "%27")
+                .Replace("#", "%23");
+
+
 
             // these characters are escaped by UrlEncode() but will fail if unescaped!
             value = value.Replace("%7E", "~");
