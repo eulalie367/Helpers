@@ -297,6 +297,10 @@ namespace System
         {
             return new DateTime(1970, 1, 1).AddSeconds(seconds);
         }
+        public static DateTime FromUnixTimeStampMilliSeconds(this long milliseconds)
+        {
+            return new DateTime(1970, 1, 1).AddMilliseconds(milliseconds);
+        }
 
         public static string TruncateWholeString(this string s, int length, string trailingString)
         {
